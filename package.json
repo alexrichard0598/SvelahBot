@@ -3,12 +3,22 @@
   "version": "1.0.0",
   "description": "A bot for use by Svelah and friends",
   "main": "/src/app.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alexrichard0598/SvelahBot"
+  },
   "dependencies": {
-    "@typeit/discord": "^5.0.13",
+    "@discordjs/opus": "^0.5.3",
+    "@discordjs/voice": "^0.6.0",
     "@types/node": "^16.9.2",
+    "chalk": "^4.1.2",
     "discord.js": "git+https://github.com/discordjs/discord.js.git",
+    "discordx": "^5.9.3",
     "dotenv": "^10.0.0",
+    "fs": "^0.0.1-security",
+    "libsodium-wrappers": "^0.7.9",
     "reflect-metadata": "^0.1.13",
+    "ts-log": "^2.2.3",
     "ts-node": "^10.2.1",
     "tslib": "^2.3.1",
     "typescript": "^4.4.3"
