@@ -6,4 +6,4 @@ Currently the bot can only respond to these commands:
   - **join:** joins the connected vc of the user sending the commands
   - **disconnect:** disconnect from the vc
   - **dc:** an alias for disconnect
-  - **play:** currently just plays `Southern Nights`
+  - **play:** currently does not have a music queue, can handle full youtube links, shortened links, and youtube video IDs

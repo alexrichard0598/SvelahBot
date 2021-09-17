@@ -5,19 +5,19 @@ import * as Path from "path";
 import { resolve } from "path/posix";
 import { log } from "./logging";
 
-const configPath = 'config.json';
+var client: Client;
 
 async function start() {
     try {
-
-
         configDotenv({
             path: resolve(__dirname, "../env/env.variables"),
         });
 
-        const client = new Client({
+        client = new Client({
             classes: [
                 Path.join(__dirname, 'commands', '*.{ts,js}'),
+                Path.join(__dirname, 'guards', '*.{ts,js}'),
+                Path.join(__dirname, 'bot', '*.{ts,js}'),
             ],
             silent: false,
             intents: [
@@ -53,6 +53,10 @@ async function start() {
     } catch (error) {
         log.error(error);
     }
+}
+
+export function getClient(): Client {
+    return client;
 }
 
 start();
