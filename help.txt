@@ -3,3 +3,7 @@ Currently the bot can only respond to these commands:
   - **help:** gives this message here
   - **hello:** give a hello world message
   - **heya:** replies to the user
+  - **join:** joins the connected vc of the user sending the commands
+  - **disconnect:** disconnect from the vc
+  - **dc:** an alias for disconnect
+  - **play:** currently just plays `Southern Nights`
