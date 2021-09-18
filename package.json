@@ -8,11 +8,11 @@
     "url": "https://github.com/alexrichard0598/SvelahBot"
   },
   "dependencies": {
-    "@discordjs/opus": "^0.5.3",
+    "@discordjs/opus": "^0.6.0",
     "@discordjs/voice": "^0.6.0",
     "@types/node": "^16.9.2",
     "chalk": "^4.1.2",
-    "discord.js": "git+https://github.com/discordjs/discord.js.git",
+    "discord.js": "^13.1.0",
     "discordx": "^5.9.3",
     "dotenv": "^10.0.0",
     "fs": "^0.0.1-security",
