@@ -1,35 +1,20 @@
-import {
-  Discord,
-  Guard,
-  GuardFunction,
-  On,
-  Slash,
-  SlashOption,
-} from "discordx";
+import { Discord, Slash, SlashOption } from "discordx";
 import {
   CommandInteraction,
-  GuildMember,
   Message,
   MessageEmbed,
-  MessagePayload,
   TextBasedChannels,
-  VoiceState,
 } from "discord.js";
-import { log } from "../logging";
 import {
   AudioPlayer,
-  AudioPlayerError,
   AudioPlayerStatus,
   AudioResource,
   createAudioPlayer,
   createAudioResource,
   getVoiceConnection,
   joinVoiceChannel,
-  VoiceConnectionStatus,
 } from "@discordjs/voice";
-import path = require("path");
 import ytdl = require("ytdl-core");
-import { IsAdmin } from "../guards/isAdmin";
 import { MediaQueue } from "../model/mediaQueue";
 import { IMetadata, Metadata } from "../model/metadata";
 

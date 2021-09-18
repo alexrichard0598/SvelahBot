@@ -1,5 +1,5 @@
 import { ArgsOf, GuardFunction } from "discordx";
-import { CommandInteraction } from "discordx/node_modules/discord.js";
+import { CommandInteraction } from "discord.js";
 
 export const IsAdmin: GuardFunction<
   ArgsOf<"interactionCreate"> | CommandInteraction

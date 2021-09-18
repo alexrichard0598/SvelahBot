@@ -1,5 +1,3 @@
-import { User } from "discord.js";
-
 export interface IMetadata {
   title: string;
   length: number;

@@ -1,7 +1,7 @@
 import { Discord, Slash } from "discordx";
 import { CommandInteraction, Message } from "discord.js";
 import { log } from "../logging";
-import { MessageEmbed } from "discordx/node_modules/discord.js";
+import { MessageEmbed } from "discord.js";
 import * as fs from "fs";
 import * as path from "path";
 

@@ -1,10 +1,5 @@
 import { Discord, Slash } from "discordx";
-import {
-  CommandInteraction,
-  Message,
-  MessageEmbed,
-  MessagePayload,
-} from "discord.js";
+import { CommandInteraction, MessageEmbed } from "discord.js";
 import { log } from "../logging";
 
 @Discord()
