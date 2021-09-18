@@ -17,7 +17,7 @@ async function start() {
             classes: [
                 Path.join(__dirname, 'commands', '*.{ts,js}'),
                 Path.join(__dirname, 'guards', '*.{ts,js}'),
-                Path.join(__dirname, 'bot', '*.{ts,js}'),
+                Path.join(__dirname, 'model', '*.{ts,js}'),
             ],
             silent: false,
             intents: [
