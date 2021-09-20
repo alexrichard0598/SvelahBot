@@ -4,7 +4,6 @@ import { config as configDotenv } from "dotenv";
 import * as Path from "path";
 import { resolve } from "path/posix";
 import { log } from "./logging";
-import * as ytDl from 'youtube-dl-wrap';
 
 var client: Client;
 

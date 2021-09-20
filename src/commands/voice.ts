@@ -14,7 +14,8 @@ import {
   getVoiceConnection,
   joinVoiceChannel,
 } from "@discordjs/voice";
-const YoutubeDlWrap = require("youtube-dl-wrap");
+//const YoutubeDlWrap = require("youtube-dl-wrap");
+const ytdlExec = require("youtube-dl-exec").raw;
 import { MediaQueue } from "../model/mediaQueue";
 import { IMetadata, Metadata } from "../model/metadata";
 import path = require("path");
@@ -69,7 +70,6 @@ export abstract class voice {
       var audioResource: AudioResource;
       var youtubeId: string;
       const embed = new MessageEmbed();
-      const ytDlWrap = new YoutubeDlWrap(path.join(__dirname, '..', "/ytdl/youtube-dl"));
 
       if (this.player === undefined) {
         this.player = createAudioPlayer();
@@ -124,12 +124,21 @@ export abstract class voice {
 
       if (youtubeId !== undefined) {
         const url = `https://www.youtube.com/watch?v=${youtubeId}`;
-        const stream: Readable = await ytDlWrap.execStream(["https://www.youtube.com/watch?v=aqz-KE-bpKQ", "-f", "best[ext=mp3]"]);
+        const stream = ytdlExec(
+          url,
+          {
+            o: "-",
+            q: "",
+            f: "bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio",
+            r: "100k",
+          },
+          { stdio: ["ignore", "pipe", "ignore"] }
+        );
         // const stream = ytdl(url, {
         //   filter: "audioonly",
         //   quality: "highestaudio",
         // });
-        audioResource = createAudioResource(stream);
+        audioResource = createAudioResource(stream.stdout);
         const metadata: IMetadata = new Metadata();
         const details = await ytdl.getInfo(url);
         //const details = await ytDlWrap.getVideoInfo(url);
