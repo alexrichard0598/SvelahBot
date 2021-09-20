@@ -14,9 +14,12 @@ import {
   getVoiceConnection,
   joinVoiceChannel,
 } from "@discordjs/voice";
-import ytdl = require("ytdl-core");
+const YoutubeDlWrap = require("youtube-dl-wrap");
 import { MediaQueue } from "../model/mediaQueue";
 import { IMetadata, Metadata } from "../model/metadata";
+import path = require("path");
+import ytdl = require("ytdl-core");
+import { Readable } from "stream";
 
 @Discord()
 export abstract class voice {
@@ -66,6 +69,7 @@ export abstract class voice {
       var audioResource: AudioResource;
       var youtubeId: string;
       const embed = new MessageEmbed();
+      const ytDlWrap = new YoutubeDlWrap(path.join(__dirname, '..', "/ytdl/youtube-dl"));
 
       if (this.player === undefined) {
         this.player = createAudioPlayer();
@@ -120,13 +124,15 @@ export abstract class voice {
 
       if (youtubeId !== undefined) {
         const url = `https://www.youtube.com/watch?v=${youtubeId}`;
-        const stream = ytdl(url, {
-          filter: "audioonly",
-          quality: "highestaudio",
-        });
+        const stream: Readable = await ytDlWrap.execStream(["https://www.youtube.com/watch?v=aqz-KE-bpKQ", "-f", "best[ext=mp3]"]);
+        // const stream = ytdl(url, {
+        //   filter: "audioonly",
+        //   quality: "highestaudio",
+        // });
         audioResource = createAudioResource(stream);
         const metadata: IMetadata = new Metadata();
         const details = await ytdl.getInfo(url);
+        //const details = await ytDlWrap.getVideoInfo(url);
         metadata.title = details.videoDetails.title;
         metadata.length = parseInt(details.videoDetails.lengthSeconds);
         metadata.url = url;
@@ -348,5 +354,6 @@ export abstract class voice {
     embed.title = "An error has occurred";
     embed.description = err.message.toString();
     this.lastChannel.send({ embeds: [embed] });
+    console.log(err);
   }
 }
