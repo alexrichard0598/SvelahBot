@@ -61,6 +61,7 @@ export abstract class voice {
     interaction: CommandInteraction
   ): Promise<void> {
     try {
+      await interaction.deferReply();
       const server = await this.getServer(interaction.guild);
       server.lastChannel = interaction.channel;
       var audioResource: AudioResource;
@@ -71,11 +72,11 @@ export abstract class voice {
       var connection = getVoiceConnection(interaction.guildId);
 
       if (connection === undefined) {
-        interaction.channel.send(await this.joinVC(interaction));
+        server.lastChannel.send(await this.joinVC(interaction));
         connection = getVoiceConnection(interaction.guildId);
       }
 
-      await interaction.deferReply();
+      
 
       if (new RegExp(/watch\?v=/).test(url)) {
         youtubeId = url
