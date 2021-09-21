@@ -1,6 +1,7 @@
 import { Discord, Slash, SlashOption } from "discordx";
 import {
   CommandInteraction,
+  Guild,
   Message,
   MessageEmbed,
   TextBasedChannels,
@@ -25,7 +26,7 @@ import { Readable } from "stream";
 @Discord()
 export abstract class voice {
   player: AudioPlayer;
-  queue: MediaQueue;
+  queues: MediaQueue[] = new Array<MediaQueue>();
   lastChannel: TextBasedChannels;
   statusMsg: Message;
 
@@ -70,22 +71,25 @@ export abstract class voice {
       var audioResource: AudioResource;
       var youtubeId: string;
       const embed = new MessageEmbed();
+      const queue = await this.getQueue(interaction.guild);
+
+      interaction.guild;
 
       if (this.player === undefined) {
         this.player = createAudioPlayer();
         this.player.on("stateChange", async (oldState, newState) => {
+          const embed = new MessageEmbed();
           if (
             oldState.status === AudioPlayerStatus.Playing &&
             newState.status === AudioPlayerStatus.Idle
           ) {
-            this.queue.dequeue();
-            if (this.queue.hasMedia()) {
-              this.player.play(this.queue.currentItem());
-              const meta = this.queue.currentItem().metadata as IMetadata;
+            queue.dequeue();
+            if (queue.hasMedia()) {
+              this.player.play(queue.currentItem());
+              const meta = queue.currentItem().metadata as IMetadata;
               if (this.statusMsg !== undefined) this.statusMsg.delete();
-              this.statusMsg = await this.lastChannel.send(
-                "Now playing " + meta.title + " [" + meta.queuedBy + "]"
-              );
+              embed.description = `Now playing [${meta.title}](${meta.url}) [${meta.queuedBy}]`;
+              this.statusMsg = await this.lastChannel.send({ embeds: [embed] });
             } else {
               if (this.statusMsg !== undefined) this.statusMsg.delete();
               this.statusMsg = await this.lastChannel.send(
@@ -155,21 +159,16 @@ export abstract class voice {
         connection.subscribe(this.player);
       }
 
-      if (this.queue === undefined) {
-        this.queue = new MediaQueue();
-      }
-
-      this.queue.enqueue(audioResource);
+      queue.enqueue(audioResource);
 
       if (this.player.state.status !== AudioPlayerStatus.Playing) {
-        const media = this.queue.currentItem();
+        const media = queue.currentItem();
         this.player.play(media);
         var meta = media.metadata as IMetadata;
-        embed.description =
-          "Now playing " + "[" + meta.title + "]" + "(" + meta.url + ")" + " [" + meta.queuedBy + "]" ;
+        embed.description = `Now playing [${meta.title}](${meta.url}) [${meta.queuedBy}]`;
       } else {
-        embed.description =
-          (audioResource.metadata as IMetadata).title + " queued";
+        var meta = audioResource.metadata as IMetadata;
+        embed.description = `[${meta.title}](${meta.url}) [${meta.queuedBy}] queued`;
       }
 
       interaction.editReply({ embeds: [embed] });
@@ -184,6 +183,7 @@ export abstract class voice {
     try {
       this.lastChannel = interaction.channel;
       var connection = getVoiceConnection(interaction.guildId);
+      const queue = await this.getQueue(interaction.guild);
 
       if (connection === undefined) {
         interaction.reply("Not currently connected to any Voice Channels");
@@ -192,7 +192,7 @@ export abstract class voice {
       } else {
         this.player.stop();
         interaction.reply("Playback stopped");
-        this.queue.clear();
+        queue.clear();
       }
     } catch (error) {
       this.handleErr(error);
@@ -263,6 +263,7 @@ export abstract class voice {
   async viewQueue(interaction?: CommandInteraction): Promise<void> {
     try {
       const userCalled = interaction !== undefined;
+      const queue = await this.getQueue(interaction.guild);
       if (userCalled) {
         this.lastChannel == interaction.channel;
         await interaction.deferReply();
@@ -276,20 +277,12 @@ export abstract class voice {
 
       var description = "";
 
-      if (this.queue.hasMedia()) {
-        const queuedSongs = this.queue.getQueue();
+      if (queue.hasMedia()) {
+        const queuedSongs = queue.getQueue();
         for (let i = 0; i < queuedSongs.length; i++) {
           const element = queuedSongs[i];
           const meta = element.metadata as IMetadata;
-
-          description +=
-            "\n" +
-            (i + 1).toString() +
-            ". " +
-            meta.title +
-            " [" +
-            meta.queuedBy +
-            "]";
+          description += `\n${i + 1}. ${meta.title} [${meta.queuedBy}]`;
         }
       } else {
         description = "No songs currently in queue";
@@ -315,14 +308,15 @@ export abstract class voice {
     interaction: CommandInteraction
   ): Promise<void> {
     try {
+      const queue = await this.getQueue(interaction.guild);
       await interaction.deferReply();
       var i = parseInt(skip);
       const embed = new MessageEmbed();
 
-      if (!this.queue.hasMedia()) {
+      if (!queue.hasMedia()) {
         embed.description = "No songs to skip";
       } else if (!isNaN(i)) {
-        this.queue.dequeue(i);
+        queue.dequeue(i);
         this.player.stop();
         embed.description = "Skipped " + (i - 1).toString() + " songs";
       } else {
@@ -364,5 +358,23 @@ export abstract class voice {
     embed.description = err.message.toString();
     this.lastChannel.send({ embeds: [embed] });
     console.log(err);
+  }
+
+  private async getQueue(server: Guild) {
+    var queue: MediaQueue;
+    if (
+      this.queues.find((q) => {
+        q.getServer() === server;
+      }) === undefined
+    ) {
+      queue = new MediaQueue(server);
+      this.queues.push(queue);
+    } else {
+      queue = this.queues.find((q) => {
+        q.getServer() === server;
+      });
+    }
+
+    return queue;
   }
 }
