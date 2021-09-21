@@ -166,7 +166,7 @@ export abstract class voice {
         this.player.play(media);
         var meta = media.metadata as IMetadata;
         embed.description =
-          "Now playing " + meta.title + " [" + meta.queuedBy + "]";
+          "Now playing " + "[" + meta.title + "]" + "(" + meta.url + ")" + " [" + meta.queuedBy + "]" ;
       } else {
         embed.description =
           (audioResource.metadata as IMetadata).title + " queued";
