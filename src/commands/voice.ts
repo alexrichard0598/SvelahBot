@@ -7,6 +7,7 @@ import {
   TextBasedChannels,
 } from "discord.js";
 import {
+  AudioPlayer,
   AudioPlayerStatus,
   AudioResource,
   createAudioResource,
@@ -17,14 +18,11 @@ const ytdlExec = require("youtube-dl-exec").raw;
 import { MediaQueue } from "../model/mediaQueue";
 import { IMetadata, Metadata } from "../model/metadata";
 import ytdl = require("ytdl-core");
-import { ServerAudioPlayer } from "../model/serverAudioPlayer";
-import { ServerChannel } from "../model/serverChannel";
+import { Server } from "../model/server";
 
 @Discord()
 export abstract class voice {
-  players: ServerAudioPlayer[] = new Array<ServerAudioPlayer>();
-  queues: MediaQueue[] = new Array<MediaQueue>();
-  textChannels: ServerChannel[] = new Array<ServerChannel>();
+  servers: Server[] = new Array<Server>();
 
   @Slash("join", {
     description: "Join the voice channel you are currently connected to",
@@ -32,7 +30,8 @@ export abstract class voice {
   async join(interaction: CommandInteraction): Promise<void> {
     try {
       interaction.reply(await this.joinVC(interaction));
-      this.lastTextChannel(interaction.guild, interaction.channel);
+      const server = await this.getServer(interaction.guild);
+      server.lastChannel = interaction.channel;
     } catch (error) {
       this.handleErr(error, interaction.guild);
     }
@@ -42,8 +41,9 @@ export abstract class voice {
   @Slash("dc", { description: "Disconnect from the voice chanel" })
   async disconnect(interaction: CommandInteraction): Promise<void> {
     try {
-      this.lastTextChannel(interaction.guild, interaction.channel);
+      const server = await this.getServer(interaction.guild);
       const connection = getVoiceConnection(interaction.guildId);
+      server.lastChannel = interaction.channel;
       if (connection === null) {
         interaction.reply("I'm not in any voice chats right now");
       } else {
@@ -63,12 +63,13 @@ export abstract class voice {
     interaction: CommandInteraction
   ): Promise<void> {
     try {
-      this.lastTextChannel(interaction.guild, interaction.channel);
+      const server = await this.getServer(interaction.guild);
+      server.lastChannel = interaction.channel;
       var audioResource: AudioResource;
       var youtubeId: string;
       const embed = new MessageEmbed();
-      const queue = await this.getQueue(interaction.guild);
-      const audioPlayer = await this.getAudioPlayer(interaction.guild);
+      const queue = server.queue;
+      const audioPlayer = server.audioPlayer;
       var connection = getVoiceConnection(interaction.guildId);
 
       if (connection === undefined) {
@@ -108,14 +109,9 @@ export abstract class voice {
           },
           { stdio: ["ignore", "pipe", "ignore"] }
         );
-        // const stream = ytdl(url, {
-        //   filter: "audioonly",
-        //   quality: "highestaudio",
-        // });
         audioResource = createAudioResource(stream.stdout);
         const metadata: IMetadata = new Metadata();
         const details = await ytdl.getInfo(url);
-        //const details = await ytDlWrap.getVideoInfo(url);
         metadata.title = details.videoDetails.title;
         metadata.length = parseInt(details.videoDetails.lengthSeconds);
         metadata.url = url;
@@ -151,10 +147,11 @@ export abstract class voice {
   @Slash("clear", { description: "Stops playback and clears queue" })
   async stop(interaction: CommandInteraction) {
     try {
-      this.lastTextChannel(interaction.guild, interaction.channel);
+      const server = await this.getServer(interaction.guild);
+      server.lastChannel = interaction.channel;
       var connection = getVoiceConnection(interaction.guildId);
-      const queue = await this.getQueue(interaction.guild);
-      const audioPlayer = await this.getAudioPlayer(interaction.guild);
+      const queue = server.queue;
+      const audioPlayer = server.audioPlayer;
 
       if (connection === undefined) {
         interaction.reply("Not currently connected to any Voice Channels");
@@ -175,8 +172,9 @@ export abstract class voice {
     try {
       const embed = new MessageEmbed();
       await interaction.deferReply();
-      const audioPlayer = await this.getAudioPlayer(interaction.guild);
-      this.lastTextChannel(interaction.guild, interaction.channel);
+      const server = await this.getServer(interaction.guild);
+      const audioPlayer = server.audioPlayer;
+      server.lastChannel = interaction.channel;
       if (audioPlayer.state.status === AudioPlayerStatus.Paused) {
         audioPlayer.unpause();
         embed.description = "Resumed queue";
@@ -196,8 +194,9 @@ export abstract class voice {
     try {
       const embed = new MessageEmbed();
       await interaction.deferReply();
-      const audioPlayer = await this.getAudioPlayer(interaction.guild);
-      this.lastTextChannel(interaction.guild, interaction.channel);
+      const server = await this.getServer(interaction.guild);
+      const audioPlayer = server.audioPlayer;
+      server.lastChannel = interaction.channel;
       if (audioPlayer.state.status === AudioPlayerStatus.Playing) {
         audioPlayer.pause();
         embed.description = "Paused playback";
@@ -217,7 +216,8 @@ export abstract class voice {
   })
   async ping(interaction: CommandInteraction): Promise<void> {
     try {
-      this.lastTextChannel(interaction.guild, interaction.channel);
+      const server = await this.getServer(interaction.guild);
+      server.lastChannel = interaction.channel;
       if (getVoiceConnection(interaction.guildId) === undefined) {
         interaction.reply("I'm not currently in an voice channels");
       } else {
@@ -236,10 +236,11 @@ export abstract class voice {
   async viewQueue(interaction?: CommandInteraction): Promise<void> {
     try {
       const userCalled = interaction !== undefined;
-      const queue = await this.getQueue(interaction.guild);
-      const audioPlayer = await this.getAudioPlayer(interaction.guild);
+      const server = await this.getServer(interaction.guild);
+      const queue = server.queue;
+      const audioPlayer = server.audioPlayer;
       if (userCalled) {
-        this.lastTextChannel(interaction.guild, interaction.channel);
+        server.lastChannel = interaction.channel;
         await interaction.deferReply();
       }
 
@@ -268,7 +269,9 @@ export abstract class voice {
       if (userCalled) {
         interaction.editReply({ embeds: [embed] });
       } else {
-        (await this.lastTextChannel(interaction.guild)).send({ embeds: [embed] });
+        server.lastChannel.send({
+          embeds: [embed],
+        });
       }
     } catch (error) {
       this.handleErr(error, interaction.guild);
@@ -282,11 +285,12 @@ export abstract class voice {
     interaction: CommandInteraction
   ): Promise<void> {
     try {
-      const queue = await this.getQueue(interaction.guild);
       await interaction.deferReply();
+      const server = await this.getServer(interaction.guild);
+      const queue = server.queue;
       var i = parseInt(skip);
       const embed = new MessageEmbed();
-      const audioPlayer = await this.getAudioPlayer(interaction.guild);
+      const audioPlayer = server.audioPlayer;
 
       if (!queue.hasMedia()) {
         embed.description = "No songs to skip";
@@ -307,7 +311,8 @@ export abstract class voice {
 
   private async joinVC(interaction: CommandInteraction): Promise<string> {
     try {
-      this.lastTextChannel(interaction.guild, interaction.channel);
+      const server = await this.getServer(interaction.guild);
+      server.lastChannel = interaction.channel;
       const guildMember = await interaction.guild.members.fetch(
         interaction.user
       );
@@ -329,94 +334,14 @@ export abstract class voice {
 
   private async handleErr(err: Error, guild: Guild) {
     const embed = new MessageEmbed();
+    const server = await this.getServer(guild);
     embed.title = "An error has occurred";
     embed.description = err.message.toString();
-    (await this.lastTextChannel(guild)).send({ embeds: [embed] });
+    server.lastChannel.send({ embeds: [embed] });
     console.log(err);
   }
 
-  private async getQueue(server: Guild) {
-    var queue: MediaQueue;
-    if (
-      this.queues.find((q) => {
-        q.getServer() === server;
-      }) === undefined
-    ) {
-      queue = new MediaQueue(server);
-      this.queues.push(queue);
-    } else {
-      queue = this.queues.find((q) => {
-        q.getServer() === server;
-      });
-    }
-
-    return queue;
-  }
-
-  private async getAudioPlayer(server: Guild) {
-    var audioPlayer: ServerAudioPlayer;
-    const queue = await this.getQueue(server);
-    if (
-      this.players.find((q) => {
-        q.server === server;
-      }) === undefined
-    ) {
-      audioPlayer = new ServerAudioPlayer(server);
-      audioPlayer.on("stateChange", async (oldState, newState) => {
-        const embed = new MessageEmbed();
-        if (
-          oldState.status === AudioPlayerStatus.Playing &&
-          newState.status === AudioPlayerStatus.Idle
-        ) {
-          queue.dequeue();
-          if (queue.hasMedia()) {
-            audioPlayer.play(queue.currentItem());
-            const meta = queue.currentItem().metadata as IMetadata;
-            embed.description = `Now playing [${meta.title}](${meta.url}) [${meta.queuedBy}]`;
-            (await this.lastTextChannel(queue.getServer())).send({ embeds: [embed] });
-          } else {
-            await (await this.lastTextChannel(queue.getServer())).send(
-              "Reached end of queue, stoped playing"
-            );
-          }
-        }
-      });
-      this.players.push(audioPlayer);
-    } else {
-      audioPlayer = this.players.find((q) => {
-        q.server === server;
-      });
-    }
-
-    return audioPlayer;
-  }
-
-  private async lastTextChannel(
-    server: Guild,
-    textChannel?: TextBasedChannels
-  ) {
-    if (
-      this.textChannels.find((c) => {
-        c.server === server;
-      }) !== undefined
-    ) {
-      const serverLastChannel: TextBasedChannels = this.textChannels.find(
-        (c) => {
-          c.server === server;
-        }
-      ).channel;
-      if (textChannel === undefined) {
-        return serverLastChannel;
-      } else if (textChannel === serverLastChannel) {
-        return textChannel;
-      } else {
-        this.textChannels = this.textChannels.filter((c) => {
-          c.channel !== serverLastChannel;
-        });
-        this.textChannels.push(new ServerChannel(server, textChannel));
-      }
-    } else {
-      this.textChannels.push(new ServerChannel(server, textChannel));
-    }
+  private async getServer(server: Guild) {
+    return this.servers.find((s) => (s.server = server));
   }
 }

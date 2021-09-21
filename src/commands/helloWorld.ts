@@ -77,9 +77,7 @@ export abstract class hello_world {
       var msg = new MessageEmbed();
       msg.addField(
         "🤖User Recognized🤖",
-        `
-            
-            ${knownUsers.get(interaction.user.id)}`
+        `${knownUsers.get(interaction.user.id)}`
       );
       interaction.followUp({ embeds: [msg] }).catch((err) => {
         log.error(err);

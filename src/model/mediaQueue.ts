@@ -3,11 +3,9 @@ import { Guild } from "discord.js";
 
 export class MediaQueue {
   private queue: Array<AudioResource>;
-  private server: Guild;
 
-  constructor(serv: Guild) {
+  constructor() {
     this.queue = new Array<AudioResource>();
-    this.server = serv;
   }
 
   enqueue(item: AudioResource) {
@@ -40,9 +38,5 @@ export class MediaQueue {
 
   currentItem(): AudioResource {
     return this.queue[0];
-  }
-
-  getServer(): Guild {
-    return this.server;
   }
 }
