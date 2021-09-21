@@ -2,12 +2,9 @@ import { Discord, Slash, SlashOption } from "discordx";
 import {
   CommandInteraction,
   Guild,
-  Message,
   MessageEmbed,
-  TextBasedChannels,
 } from "discord.js";
 import {
-  AudioPlayer,
   AudioPlayerStatus,
   AudioResource,
   createAudioResource,
@@ -15,7 +12,6 @@ import {
   joinVoiceChannel,
 } from "@discordjs/voice";
 const ytdlExec = require("youtube-dl-exec").raw;
-import { MediaQueue } from "../model/mediaQueue";
 import { IMetadata, Metadata } from "../model/metadata";
 import ytdl = require("ytdl-core");
 import { Server } from "../model/server";
@@ -29,7 +25,8 @@ export abstract class voice {
   })
   async join(interaction: CommandInteraction): Promise<void> {
     try {
-      interaction.reply(await this.joinVC(interaction));
+      await interaction.deferReply();
+      interaction.editReply(await this.joinVC(interaction));
       const server = await this.getServer(interaction.guild);
       server.lastChannel = interaction.channel;
     } catch (error) {
@@ -41,15 +38,16 @@ export abstract class voice {
   @Slash("dc", { description: "Disconnect from the voice chanel" })
   async disconnect(interaction: CommandInteraction): Promise<void> {
     try {
+      await interaction.deferReply();
       const server = await this.getServer(interaction.guild);
       const connection = getVoiceConnection(interaction.guildId);
       server.lastChannel = interaction.channel;
       if (connection === null) {
-        interaction.reply("I'm not in any voice chats right now");
+        interaction.editReply("I'm not in any voice chats right now");
       } else {
         connection.disconnect();
         connection.destroy();
-        interaction.reply("Disconnected 👋");
+        interaction.editReply("Disconnected 👋");
       }
     } catch (error) {
       this.handleErr(error, interaction.guild);
@@ -147,6 +145,7 @@ export abstract class voice {
   @Slash("clear", { description: "Stops playback and clears queue" })
   async stop(interaction: CommandInteraction) {
     try {
+      await interaction.deferReply();
       const server = await this.getServer(interaction.guild);
       server.lastChannel = interaction.channel;
       var connection = getVoiceConnection(interaction.guildId);
@@ -154,12 +153,12 @@ export abstract class voice {
       const audioPlayer = server.audioPlayer;
 
       if (connection === undefined) {
-        interaction.reply("Not currently connected to any Voice Channels");
+        interaction.editReply("Not currently connected to any Voice Channels");
       } else if (audioPlayer.state.status === AudioPlayerStatus.Idle) {
-        interaction.reply("Nothing is currently queued");
+        interaction.editReply("Nothing is currently queued");
       } else {
         audioPlayer.stop();
-        interaction.reply("Playback stopped");
+        interaction.editReply("Playback stopped");
         queue.clear();
       }
     } catch (error) {
@@ -192,8 +191,8 @@ export abstract class voice {
   @Slash("pause", { description: "Plays music" })
   async pause(interaction: CommandInteraction): Promise<void> {
     try {
-      const embed = new MessageEmbed();
       await interaction.deferReply();
+      const embed = new MessageEmbed();
       const server = await this.getServer(interaction.guild);
       const audioPlayer = server.audioPlayer;
       server.lastChannel = interaction.channel;
@@ -216,12 +215,13 @@ export abstract class voice {
   })
   async ping(interaction: CommandInteraction): Promise<void> {
     try {
+      await interaction.deferReply();
       const server = await this.getServer(interaction.guild);
       server.lastChannel = interaction.channel;
       if (getVoiceConnection(interaction.guildId) === undefined) {
-        interaction.reply("I'm not currently in an voice channels");
+        interaction.editReply("I'm not currently in an voice channels");
       } else {
-        interaction.reply(
+        interaction.editReply(
           "My ping is " +
             getVoiceConnection(interaction.guildId).ping.udp +
             "ms"
@@ -269,7 +269,7 @@ export abstract class voice {
       if (userCalled) {
         interaction.editReply({ embeds: [embed] });
       } else {
-        server.lastChannel.send({
+        if(server.lastChannel !== undefined) server.lastChannel.send({
           embeds: [embed],
         });
       }
@@ -337,11 +337,17 @@ export abstract class voice {
     const server = await this.getServer(guild);
     embed.title = "An error has occurred";
     embed.description = err.message.toString();
-    server.lastChannel.send({ embeds: [embed] });
+    if(server.lastChannel !== undefined) server.lastChannel.send({ embeds: [embed] });
     console.log(err);
   }
 
   private async getServer(server: Guild) {
-    return this.servers.find((s) => (s.server = server));
+    const foundServer = this.servers.find((s) => (s.server.id == server.id));
+    if(foundServer === undefined) {
+      var newServer = new Server(server);
+      this.servers.push(newServer);
+      return newServer;  
+    }
+    return foundServer;
   }
 }

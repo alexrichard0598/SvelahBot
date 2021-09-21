@@ -10,8 +10,8 @@ export class Server {
 
     constructor(server: Guild, queue?: MediaQueue, audioPlayer?: AudioPlayer, channel?: TextBasedChannels) {
         this.server = server;
-        this.queue = queue === undefined? queue : new MediaQueue();
-        this.audioPlayer = audioPlayer === undefined? audioPlayer: new AudioPlayer();
-        this.lastChannel = channel === undefined? channel : undefined;
+        this.queue = queue !== undefined? queue : new MediaQueue();
+        this.audioPlayer = audioPlayer !== undefined? audioPlayer: new AudioPlayer();
+        this.lastChannel = channel !== undefined? channel : undefined;
     }
 }
