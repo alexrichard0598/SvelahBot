@@ -1,6 +1,6 @@
 {
   "name": "svelahbot",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A bot for use by Svelah and friends",
   "main": "/src/app.ts",
   "repository": {
