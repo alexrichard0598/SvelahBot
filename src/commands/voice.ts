@@ -1,6 +1,7 @@
 import { Discord, Slash, SlashOption } from "discordx";
 import {
   CommandInteraction,
+  Formatters,
   Guild,
   MessageEmbed,
 } from "discord.js";
@@ -15,6 +16,8 @@ const ytdlExec = require("youtube-dl-exec").raw;
 import { IMetadata, Metadata } from "../model/metadata";
 import ytdl = require("ytdl-core");
 import { Server } from "../model/server";
+import * as youtubeSearch from "youtube-search";
+const PlaylistSummary = require("youtube-playlist-summary");
 
 @Discord()
 export abstract class voice {
@@ -76,64 +79,54 @@ export abstract class voice {
         connection = getVoiceConnection(interaction.guildId);
       }
 
-      
-
       if (new RegExp(/watch\?v=/).test(url)) {
-        youtubeId = url
-          .match(/(?:v=)([^&?]*)/)
-          .toString()
-          .slice(2, 13);
+        url =
+          "https://www.youtube.com/watch?v=" +
+          url
+            .match(/(?:v=)([^&?]*)/)
+            .toString()
+            .slice(2, 13);
       } else if (new RegExp(/youtu.be/).test(url)) {
-        youtubeId = url
-          .match(/(?:.be\/)([^&?]*)/)
-          .toString()
-          .slice(4, 15);
+        url =
+          "https://www.youtube.com/watch?v=" +
+          url
+            .match(/(?:.be\/)([^&?]*)/)
+            .toString()
+            .slice(4, 15);
       } else if (new RegExp(/^[A-Za-z0-9-_]{11}$/).test(url)) {
-        youtubeId = url;
+        url = "https://www.youtube.com/watch?v=" + url;
+      } else if (new RegExp(/list=/).test(url)) {
+        url = url.match(/(?:list=)([^&?]*)/)[1].toString();
       } else {
-        embed.description = "No valid youtube video was found";
-        interaction.editReply({ embeds: [embed] });
-        return;
+        embed.description = `Searching youtube for ${url}`;
+        server.lastChannel.send({ embeds: [embed] });
+        youtubeId = await this.searchYoutube(url, interaction.guild);
       }
 
-      if (youtubeId !== undefined) {
-        const url = `https://www.youtube.com/watch?v=${youtubeId}`;
-        const stream = ytdlExec(
-          url,
-          {
-            o: "-",
-            q: "",
-            f: "bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio",
-            r: "100k",
-          },
-          { stdio: ["ignore", "pipe", "ignore"] }
-        );
-        audioResource = createAudioResource(stream.stdout);
-        const metadata: IMetadata = new Metadata();
-        const details = await ytdl.getInfo(url);
-        metadata.title = details.videoDetails.title;
-        metadata.length = parseInt(details.videoDetails.lengthSeconds);
-        metadata.url = url;
-        metadata.queuedBy = (
-          await interaction.guild.members.fetch(interaction.user.id)
-        ).displayName;
-        audioResource.metadata = metadata;
+      var audioResource: AudioResource;
+      var playlistTitle: string;
+
+      if (new RegExp(/watch/).test(url)) {
+        audioResource = await this.createYoutubeResource(url, interaction);
+        queue.enqueue(audioResource);
+      } else {
+        playlistTitle = await this.createYoutubePlaylistResource(url, interaction, server);
       }
 
       if (!audioPlayer.playable.includes(connection)) {
         connection.subscribe(audioPlayer);
       }
 
-      queue.enqueue(audioResource);
-
       if (audioPlayer.state.status !== AudioPlayerStatus.Playing) {
         const media = queue.currentItem();
         audioPlayer.play(media);
         var meta = media.metadata as IMetadata;
         embed.description = `Now playing [${meta.title}](${meta.url}) [${meta.queuedBy}]`;
-      } else {
+      } else if(new RegExp(/watch/).test(url)) {
         var meta = audioResource.metadata as IMetadata;
         embed.description = `[${meta.title}](${meta.url}) [${meta.queuedBy}] queued`;
+      } else {
+        embed.description = `[${playlistTitle}](https://www.youtube.com/playlist?list=${url}) [${meta.queuedBy}] queued`;
       }
 
       interaction.editReply({ embeds: [embed] });
@@ -258,7 +251,7 @@ export abstract class voice {
         for (let i = 0; i < queuedSongs.length; i++) {
           const element = queuedSongs[i];
           const meta = element.metadata as IMetadata;
-          description += `\n${i + 1}. ${meta.title} [${meta.queuedBy}]`;
+          description += `\n${i + 1}. [${meta.title}](${meta.url}) [${meta.queuedBy}]`;
         }
       } else {
         description = "No songs currently in queue";
@@ -270,9 +263,10 @@ export abstract class voice {
       if (userCalled) {
         interaction.editReply({ embeds: [embed] });
       } else {
-        if(server.lastChannel !== undefined) server.lastChannel.send({
-          embeds: [embed],
-        });
+        if (server.lastChannel !== undefined)
+          server.lastChannel.send({
+            embeds: [embed],
+          });
       }
     } catch (error) {
       this.handleErr(error, interaction.guild);
@@ -338,17 +332,107 @@ export abstract class voice {
     const server = await this.getServer(guild);
     embed.title = "An error has occurred";
     embed.description = err.message.toString();
-    if(server.lastChannel !== undefined) server.lastChannel.send({ embeds: [embed] });
+    if (server.lastChannel !== undefined)
+      server.lastChannel.send({ embeds: [embed] });
     console.log(err);
   }
 
   private async getServer(server: Guild) {
-    const foundServer = this.servers.find((s) => (s.server.id == server.id));
-    if(foundServer === undefined) {
+    const foundServer = this.servers.find((s) => s.server.id == server.id);
+    if (foundServer === undefined) {
       var newServer = new Server(server);
       this.servers.push(newServer);
-      return newServer;  
+      return newServer;
     }
     return foundServer;
   }
+
+  private async searchYoutube(search: string, guild: Guild): Promise<string> {
+    var opts: youtubeSearch.YouTubeSearchOptions = {
+      maxResults: 1,
+      key: "AIzaSyDDs1MwqLLDmSk2vBD7ZYGUE_THkLpnBUQ",
+    };
+    var res = await youtubeSearch(search, opts).then((results) => results);
+    if (res != null) {
+      return res.results[0].id;
+    }
+  }
+
+  private async createYoutubeResource(
+    url: string,
+    interaction: CommandInteraction
+  ): Promise<AudioResource<unknown>> {
+    const stream = ytdlExec(
+      url,
+      {
+        o: "-",
+        q: "",
+        f: "bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio",
+        r: "100k",
+      },
+      { stdio: ["ignore", "pipe", "ignore"] }
+    );
+    var audioResource: AudioResource;
+    audioResource = createAudioResource(stream.stdout);
+    const metadata: IMetadata = new Metadata();
+    const details = await ytdl.getInfo(url);
+    metadata.title = details.videoDetails.title;
+    metadata.length = parseInt(details.videoDetails.lengthSeconds);
+    metadata.url = url;
+    metadata.queuedBy = (
+      await interaction.guild.members.fetch(interaction.user.id)
+    ).displayName;
+    audioResource.metadata = metadata;
+    return audioResource;
+  }
+
+  private async createYoutubePlaylistResource(
+    playlistId: string,
+    interaction: CommandInteraction,
+    server: Server
+  ): Promise<string> {
+    var audioResources: Array<AudioResource>;
+    const ps = new PlaylistSummary({
+      GOOGLE_API_KEY: "AIzaSyDDs1MwqLLDmSk2vBD7ZYGUE_THkLpnBUQ",
+    });
+
+    var result = await ps
+      .getPlaylistItems(playlistId)
+      .then(async (result) => result);
+
+    for (let i = 0; i < result.items.length; i++) {
+      const video = result.items[i];
+      const url = video.videoUrl;
+      var audioResource: AudioResource;
+      const stream = ytdlExec(
+        url,
+        {
+          o: "-",
+          q: "",
+          f: "bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio",
+          r: "100k",
+        },
+        { stdio: ["ignore", "pipe", "ignore"] }
+      );
+      audioResource = createAudioResource(stream.stdout);
+      const metadata: IMetadata = new Metadata();
+      const details = await ytdl.getInfo(url);
+      metadata.title = details.videoDetails.title;
+      metadata.length = parseInt(details.videoDetails.lengthSeconds);
+      metadata.url = url;
+      metadata.queuedBy = (
+        await interaction.guild.members.fetch(interaction.user.id)
+      ).displayName;
+      audioResource.metadata = metadata;
+      server.queue.enqueue(audioResource);
+    }
+
+    return result.playlistTitle;
+  }
 }
+
+class YTVid {
+  videoUrl: string;
+}
+
+
