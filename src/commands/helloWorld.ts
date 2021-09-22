@@ -71,6 +71,7 @@ export abstract class hello_world {
         "224022759292796928",
         "Long live President Eden, long live the Enclave! :military_helmet: ",
       ], //Hetzer
+      ["145386181297831938", "Whoever says bagged milk doesn't make any sense just doesn't get it. :milk: "] // Will,
     ]);
 
     if (knownUsers.has(interaction.user.id)) {
