@@ -17,6 +17,7 @@ import { IMetadata, Metadata } from "../model/metadata";
 import ytdl = require("ytdl-core");
 import { Server } from "../model/server";
 import * as youtubeSearch from "youtube-search";
+import { config as configDotenv } from "dotenv";
 const PlaylistSummary = require("youtube-playlist-summary");
 
 @Discord()
@@ -100,7 +101,7 @@ export abstract class voice {
       } else {
         embed.description = `Searching youtube for ${url}`;
         server.lastChannel.send({ embeds: [embed] });
-        youtubeId = await this.searchYoutube(url, interaction.guild);
+        url = "https://www.youtube.com/watch?v=" + await this.searchYoutube(url, interaction.guild);
       }
 
       var audioResource: AudioResource;
@@ -350,7 +351,7 @@ export abstract class voice {
   private async searchYoutube(search: string, guild: Guild): Promise<string> {
     var opts: youtubeSearch.YouTubeSearchOptions = {
       maxResults: 1,
-      key: "AIzaSyDDs1MwqLLDmSk2vBD7ZYGUE_THkLpnBUQ",
+      key: process.env.GOOGLE_API,
     };
     var res = await youtubeSearch(search, opts).then((results) => results);
     if (res != null) {
@@ -393,7 +394,7 @@ export abstract class voice {
   ): Promise<string> {
     var audioResources: Array<AudioResource>;
     const ps = new PlaylistSummary({
-      GOOGLE_API_KEY: "AIzaSyDDs1MwqLLDmSk2vBD7ZYGUE_THkLpnBUQ",
+      GOOGLE_API_KEY: process.env.GOOGLE_API,
     });
 
     var result = await ps
