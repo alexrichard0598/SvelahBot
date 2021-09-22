@@ -1,7 +1,6 @@
 import { Discord, Slash, SlashOption } from "discordx";
 import {
   CommandInteraction,
-  Formatters,
   Guild,
   MessageEmbed,
 } from "discord.js";
@@ -17,7 +16,6 @@ import { IMetadata, Metadata } from "../model/metadata";
 import ytdl = require("ytdl-core");
 import { Server } from "../model/server";
 import * as youtubeSearch from "youtube-search";
-import { config as configDotenv } from "dotenv";
 const PlaylistSummary = require("youtube-playlist-summary");
 
 @Discord()

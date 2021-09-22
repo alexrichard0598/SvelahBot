@@ -1,5 +1,4 @@
 import { AudioResource } from "@discordjs/voice";
-import { Guild } from "discord.js";
 
 export class MediaQueue {
   private queue: Array<AudioResource>;
