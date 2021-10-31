@@ -33,8 +33,14 @@ async function start() {
         Intents.FLAGS.GUILD_INVITES,
         Intents.FLAGS.GUILD_BANS,
       ],
-      botGuilds: process.env.DEV ? ["664999986974687242"] : undefined,
+      botGuilds: process.env.DEV == "true" ? ["664999986974687242"] : undefined,
     });
+
+    if(process.env.DEV == "true") {
+      log.info("Developer Mode");
+    } else {
+      log.info("Live");
+    }
 
     client.once("ready", async () => {
       await client.initApplicationCommands();
