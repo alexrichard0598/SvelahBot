@@ -1,6 +1,7 @@
 import { Discord, Slash } from "discordx";
-import { CommandInteraction, MessageEmbed } from "discord.js";
+import { CommandInteraction, Message, MessageEmbed } from "discord.js";
 import { log } from "../logging";
+import { SharedMethods }  from "./sharedMethods";
 
 @Discord()
 export abstract class hello_world {
@@ -84,5 +85,19 @@ export abstract class hello_world {
         log.error(err);
       });
     }
+  }
+
+  @Slash("clearmessages", { description: "Clears all messages from a bot in the text channel" })
+  async clear(interaction: CommandInteraction): Promise<void> {
+    await interaction.deferReply();
+    const deleting = await interaction.fetchReply();
+    var messages = new Array<Message>();
+    await (await interaction.channel.messages.fetch({ limit: 100 }, { force: true })).forEach(msg => {
+      if (msg.author.id == "698214544560095362" && msg.id != deleting.id) {
+        messages.push(msg)
+      }
+    });
+
+    if(deleting instanceof Message) SharedMethods.ClearMessages(messages, deleting);
   }
 }

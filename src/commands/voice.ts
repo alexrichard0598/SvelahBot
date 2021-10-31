@@ -1,8 +1,11 @@
-import { Discord, Slash, SlashOption } from "discordx";
+import { Client, Discord, On, Slash, SlashOption } from "discordx";
 import {
   CommandInteraction,
   Guild,
+  GuildMember,
+  Message,
   MessageEmbed,
+  VoiceState,
 } from "discord.js";
 import {
   AudioPlayerStatus,
@@ -16,6 +19,8 @@ import { IMetadata, Metadata } from "../model/metadata";
 import ytdl = require("ytdl-core");
 import { Server } from "../model/server";
 import * as youtubeSearch from "youtube-search";
+import { on } from "events";
+import { SharedMethods } from "./sharedMethods";
 const PlaylistSummary = require("youtube-playlist-summary");
 
 @Discord()
@@ -27,10 +32,11 @@ export abstract class voice {
   })
   async join(interaction: CommandInteraction): Promise<void> {
     try {
-      await interaction.deferReply();
-      interaction.editReply(await this.joinVC(interaction));
-      const server = await this.getServer(interaction.guild);
-      server.lastChannel = interaction.channel;
+      const server = await this.getServer(interaction.guild); // Get the server
+      server.updateStatusMessage(await interaction.deferReply({ fetchReply: true })); // Bot is thinking
+
+      interaction.editReply({ embeds: [await this.joinVC(interaction)] }); // Join the vc
+      server.lastChannel = interaction.channel; // set the last replied channel
     } catch (error) {
       this.handleErr(error, interaction.guild);
     }
@@ -40,10 +46,15 @@ export abstract class voice {
   @Slash("dc", { description: "Disconnect from the voice chanel" })
   async disconnect(interaction: CommandInteraction): Promise<void> {
     try {
-      await interaction.deferReply();
-      const server = await this.getServer(interaction.guild);
-      const connection = getVoiceConnection(interaction.guildId);
-      server.lastChannel = interaction.channel;
+      const server = await this.getServer(interaction.guild); // Get the server
+      server.updateStatusMessage(await interaction.deferReply({ fetchReply: true })); // Bot is thinking
+      const connection = getVoiceConnection(interaction.guildId); // get the current voice connection
+      server.lastChannel = interaction.channel; // set the last replied channel
+
+      /* Checks if the bot is in a voice channel
+       * if yes disconnect and then reply
+       * if no just reply
+       */
       if (connection === null) {
         interaction.editReply("I'm not in any voice chats right now");
       } else {
@@ -63,21 +74,24 @@ export abstract class voice {
     interaction: CommandInteraction
   ): Promise<void> {
     try {
-      await interaction.deferReply();
-      const server = await this.getServer(interaction.guild);
-      server.lastChannel = interaction.channel;
-      var audioResource: AudioResource;
-      var youtubeId: string;
-      const embed = new MessageEmbed();
-      const queue = server.queue;
-      const audioPlayer = server.audioPlayer;
-      var connection = getVoiceConnection(interaction.guildId);
+      await interaction.deferReply({ fetchReply: true }); // Bot is thinking
+      const server = await this.getServer(interaction.guild); // get the server
 
+      server.lastChannel = interaction.channel; // update the last replied channel
+
+      var audioResource: AudioResource; // create audio resource
+      const embed = new MessageEmbed(); // create message embed
+      const queue = server.queue; // get the server's queue
+      const audioPlayer = server.audioPlayer; // get the server's audioPlayer
+      var connection = getVoiceConnection(interaction.guildId); // get the current voice connection
+
+      /* if the voice connection is undefined create a voice connection */
       if (connection === undefined) {
-        server.lastChannel.send(await this.joinVC(interaction));
+        server.lastChannel.send({ embeds: [await this.joinVC(interaction)] });
         connection = getVoiceConnection(interaction.guildId);
       }
 
+      /* get the youtube video */
       if (new RegExp(/watch\?v=/).test(url)) {
         url =
           "https://www.youtube.com/watch?v=" +
@@ -102,8 +116,8 @@ export abstract class voice {
         url = "https://www.youtube.com/watch?v=" + await this.searchYoutube(url, interaction.guild);
       }
 
-      var audioResource: AudioResource;
-      var playlistTitle: string;
+      var audioResource: AudioResource; // create audio resource
+      var playlistTitle: string; // get the playlist title
 
       if (new RegExp(/watch/).test(url)) {
         audioResource = await this.createYoutubeResource(url, interaction);
@@ -121,11 +135,14 @@ export abstract class voice {
         audioPlayer.play(media);
         var meta = media.metadata as IMetadata;
         embed.description = `Now playing [${meta.title}](${meta.url}) [${meta.queuedBy}]`;
-      } else if(new RegExp(/watch/).test(url)) {
+        server.updateStatusMessage(await interaction.fetchReply());
+      } else if (new RegExp(/watch/).test(url)) {
         var meta = audioResource.metadata as IMetadata;
         embed.description = `[${meta.title}](${meta.url}) [${meta.queuedBy}] queued`;
+        server.updateQueueMessage(await interaction.fetchReply());
       } else {
         embed.description = `[${playlistTitle}](https://www.youtube.com/playlist?list=${url}) [${meta.queuedBy}] queued`;
+        server.updateQueueMessage(await interaction.fetchReply());
       }
 
       interaction.editReply({ embeds: [embed] });
@@ -138,8 +155,8 @@ export abstract class voice {
   @Slash("clear", { description: "Stops playback and clears queue" })
   async stop(interaction: CommandInteraction) {
     try {
-      await interaction.deferReply();
       const server = await this.getServer(interaction.guild);
+      server.updateStatusMessage(await interaction.deferReply({ fetchReply: true })); // Bot is thinking
       server.lastChannel = interaction.channel;
       var connection = getVoiceConnection(interaction.guildId);
       const queue = server.queue;
@@ -154,6 +171,7 @@ export abstract class voice {
         interaction.editReply("Playback stopped");
         queue.clear();
       }
+
     } catch (error) {
       this.handleErr(error, interaction.guild);
     }
@@ -162,9 +180,10 @@ export abstract class voice {
   @Slash("resume", { description: "Plays music" })
   async resume(interaction: CommandInteraction): Promise<void> {
     try {
-      const embed = new MessageEmbed();
-      await interaction.deferReply();
+
       const server = await this.getServer(interaction.guild);
+      server.updateStatusMessage(await interaction.deferReply({ fetchReply: true })); // Bot is thinking
+      const embed = new MessageEmbed();
       const audioPlayer = server.audioPlayer;
       server.lastChannel = interaction.channel;
       if (audioPlayer.state.status === AudioPlayerStatus.Paused) {
@@ -176,6 +195,7 @@ export abstract class voice {
         embed.description = "Cannot resume queue";
       }
       interaction.editReply({ embeds: [embed] });
+
     } catch (error) {
       this.handleErr(error, interaction.guild);
     }
@@ -184,9 +204,9 @@ export abstract class voice {
   @Slash("pause", { description: "Plays music" })
   async pause(interaction: CommandInteraction): Promise<void> {
     try {
-      await interaction.deferReply();
-      const embed = new MessageEmbed();
       const server = await this.getServer(interaction.guild);
+      server.updateStatusMessage(await interaction.deferReply({ fetchReply: true })); // Bot is thinking
+      const embed = new MessageEmbed();
       const audioPlayer = server.audioPlayer;
       server.lastChannel = interaction.channel;
       if (audioPlayer.state.status === AudioPlayerStatus.Playing) {
@@ -216,8 +236,8 @@ export abstract class voice {
       } else {
         interaction.editReply(
           "My ping is " +
-            getVoiceConnection(interaction.guildId).ping.udp +
-            "ms"
+          getVoiceConnection(interaction.guildId).ping.udp +
+          "ms"
         );
       }
     } catch (error) {
@@ -267,6 +287,8 @@ export abstract class voice {
             embeds: [embed],
           });
       }
+
+      server.updateQueueMessage(await interaction.fetchReply());
     } catch (error) {
       this.handleErr(error, interaction.guild);
     }
@@ -279,8 +301,8 @@ export abstract class voice {
     interaction: CommandInteraction
   ): Promise<void> {
     try {
-      await interaction.deferReply();
       const server = await this.getServer(interaction.guild);
+      server.updateStatusMessage(await interaction.deferReply({ fetchReply: true })); // Bot is thinking
       const queue = server.queue;
       var i = parseInt(skip);
       const embed = new MessageEmbed();
@@ -303,24 +325,58 @@ export abstract class voice {
     }
   }
 
-  private async joinVC(interaction: CommandInteraction): Promise<string> {
+  @On("voiceStateUpdate")
+  async voiceStatusUpdate(voiceStates: [oldState: VoiceState, newState: VoiceState], client: Client) {
+    const user = voiceStates[0].member.user;
+    const server = await this.getServer(voiceStates[0].guild);
+    
+    if (user.id == "698214544560095362") {
+      if (voiceStates[1].channelId == null) {
+        const deleting = await server.lastChannel.send("Cleaning up after disconnect");
+        var messages = new Array<Message>();
+        await (await server.lastChannel.messages.fetch({ limit: 100 }, { force: true })).forEach(msg => {
+          if (msg.author.id == "698214544560095362" && msg.id != deleting.id) {
+            messages.push(msg)
+          }
+        });
+        SharedMethods.ClearMessages(messages, deleting);
+      }
+    }
+    else {
+      const channel = voiceStates[0].channel;
+      if(channel != null) {
+        if(channel.members.filter(m => m.user.bot == false).size == 0) {
+          getVoiceConnection(server.guild.id).disconnect();
+        }
+      }
+    }
+  }
+
+  /**
+   * 
+   * @param interaction the discord interaction
+   * @returns "Joined " + voiceChannelName
+   */
+  private async joinVC(interaction: CommandInteraction): Promise<MessageEmbed> {
     try {
       const server = await this.getServer(interaction.guild);
       server.lastChannel = interaction.channel;
       const guildMember = await interaction.guild.members.fetch(
         interaction.user
       );
+      const embed = new MessageEmbed;
       const vc = guildMember.voice.channel;
       if (vc === null) {
-        return "You are not part of a voice chat, please join a voice chat first.";
+        embed.description = "You are not part of a voice chat, please join a voice chat first.";
       } else {
         await joinVoiceChannel({
           channelId: vc.id,
           guildId: vc.guildId,
           adapterCreator: vc.guild.voiceAdapterCreator,
         });
-        return "Joined " + vc.name;
+        embed.description = "Joined " + vc.name;
       }
+      return embed;
     } catch (error) {
       this.handleErr(error, interaction.guild);
     }
@@ -337,7 +393,7 @@ export abstract class voice {
   }
 
   private async getServer(server: Guild) {
-    const foundServer = this.servers.find((s) => s.server.id == server.id);
+    const foundServer = this.servers.find((s) => s.guild.id == server.id);
     if (foundServer === undefined) {
       var newServer = new Server(server);
       this.servers.push(newServer);
@@ -390,7 +446,6 @@ export abstract class voice {
     interaction: CommandInteraction,
     server: Server
   ): Promise<string> {
-    var audioResources: Array<AudioResource>;
     const ps = new PlaylistSummary({
       GOOGLE_API_KEY: process.env.GOOGLE_API,
     });
@@ -429,9 +484,3 @@ export abstract class voice {
     return result.playlistTitle;
   }
 }
-
-class YTVid {
-  videoUrl: string;
-}
-
-
