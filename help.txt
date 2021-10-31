@@ -14,3 +14,4 @@ Currently the bot can only respond to these commands:
   **/stop:** stops playback and clears the queue
   **/clear:** an alias for stop
   **/skip:** skip the song, if an index is provided skips to the selected index
+  **/clearmessages:** clear all messages from the bot in the channel the command is run in
