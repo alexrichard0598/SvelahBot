@@ -1,11 +1,11 @@
 {
-  "name": "svelahbot",
+  "name": "volfbot",
   "version": "1.2.0",
   "description": "A bot for use by Svelah and friends",
   "main": "/src/app.ts",
   "repository": {
     "type": "git",
-    "url": "https://github.com/alexrichard0598/SvelahBot"
+    "url": "https://github.com/alexrichard0598/Volfbot"
   },
   "dependencies": {
     "@discordjs/opus": "^0.6.0",

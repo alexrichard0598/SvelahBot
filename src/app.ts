@@ -56,7 +56,7 @@ async function start() {
 
     await client
       .login(process.env.TOKEN)
-      .then(() => log.info("SvelahBot Online"));
+      .then(() => log.info("Volfbot Online"));
   } catch (error) {
     log.error(error);
   }
