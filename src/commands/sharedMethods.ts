@@ -28,11 +28,10 @@ export abstract class SharedMethods {
         });
     }
 
-    public static async DisconnectBot(server: Server) {
-        await server.queue.clear();
-        var stream = await fs.createReadStream('./src/assets/sounds/volfbot-disconnect.mp3');
-        const sound = await createAudioResource(stream);
-        await server.audioPlayer.play(sound);
+    public static DisconnectBot(server: Server) {
+        server.queue.clear();
+        var stream = fs.createReadStream('./src/assets/sounds/volfbot-disconnect.mp3');
+        const sound = createAudioResource(stream);
         const connection = getVoiceConnection(server.guild.id);
 
         if (!server.audioPlayer.playable.includes(connection)) {
@@ -46,6 +45,7 @@ export abstract class SharedMethods {
             }
         })
 
+        server.audioPlayer.play(sound);
     }
 
 
