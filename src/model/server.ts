@@ -1,5 +1,6 @@
-import { AudioPlayer, AudioPlayerStatus } from "@discordjs/voice";
+import { AudioPlayer, AudioPlayerStatus, getVoiceConnection } from "@discordjs/voice";
 import { Guild, Message, MessageEmbed, TextBasedChannel, TextBasedChannels } from "discord.js";
+import { SharedMethods } from "../commands/sharedMethods";
 import { MediaQueue } from "./mediaQueue";
 import { Messages } from "./messages";
 import { IMetadata } from "./metadata";
@@ -10,9 +11,10 @@ export class Server {
   audioPlayer: AudioPlayer;
   lastChannel: TextBasedChannels;
   messages: Messages;
+  private timer;
 
-  constructor(server: Guild, queue?: MediaQueue, audioPlayer?: AudioPlayer, channel?: TextBasedChannels) {
-    this.guild = server;
+  constructor(guild: Guild, queue?: MediaQueue, audioPlayer?: AudioPlayer, channel?: TextBasedChannels) {
+    this.guild = guild;
     this.queue = queue !== undefined ? queue : new MediaQueue();
     this.audioPlayer = audioPlayer !== undefined ? audioPlayer : new AudioPlayer();
     this.audioPlayer.on("stateChange", async (oldState, newState) => {
@@ -28,9 +30,15 @@ export class Server {
           embed.description = "Now playing " + meta.title + " [" + meta.queuedBy + "]";
         } else {
           embed.description = "Reached end of queue, stoped playing";
+          this.timer = setTimeout(() => {
+            SharedMethods.DisconnectBot(this);
+            this.lastChannel.send({embeds: [new MessageEmbed().setDescription("Automatically disconnected due to 5 minutes of inactivity")]})
+          }, 300000);
         }
 
         this.updateStatusMessage(await this.lastChannel.send({ embeds: [embed] }));
+      } else if (newState.status == AudioPlayerStatus.Playing) {
+        clearTimeout(this.timer);
       }
     })
     this.lastChannel = channel !== undefined ? channel : undefined;

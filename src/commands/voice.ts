@@ -58,8 +58,7 @@ export abstract class voice {
       if (connection === null) {
         interaction.editReply("I'm not in any voice chats right now");
       } else {
-        connection.disconnect();
-        connection.destroy();
+        SharedMethods.DisconnectBot(server);
         interaction.editReply("Disconnected 👋");
       }
     } catch (error) {
@@ -333,20 +332,15 @@ export abstract class voice {
     if (user.id == "698214544560095362") {
       if (voiceStates[1].channelId == null) {
         const deleting = await server.lastChannel.send("Cleaning up after disconnect");
-        var messages = new Array<Message>();
-        await (await server.lastChannel.messages.fetch({ limit: 100 }, { force: true })).forEach(msg => {
-          if (msg.author.id == "698214544560095362" && msg.id != deleting.id) {
-            messages.push(msg)
-          }
-        });
-        SharedMethods.ClearMessages(messages, deleting);
+        server.updateQueueMessage(null);
+        server.updateStatusMessage(null);
       }
     }
     else {
       const channel = voiceStates[0].channel;
       if (channel != null) {
         if (channel.members.filter(m => m.user.bot == false).size == 0) {
-          getVoiceConnection(server.guild.id).disconnect();
+          SharedMethods.DisconnectBot(server);
         }
       }
     }

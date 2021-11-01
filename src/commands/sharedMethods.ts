@@ -1,5 +1,8 @@
 import Collection from "@discordjs/collection";
-import { CommandInteraction, Interaction, Message } from "discord.js";
+import { AudioPlayerStatus, AudioResource, createAudioResource, getVoiceConnection, VoiceConnection } from "@discordjs/voice";
+import { CommandInteraction, Guild, Interaction, Message } from "discord.js";
+import { Server } from "../model/server";
+import * as fs from 'fs';
 
 export abstract class SharedMethods {
     public static async ClearMessages(messages: Array<Message>, statusMessage: Message, interaction?: CommandInteraction) {
@@ -23,7 +26,25 @@ export abstract class SharedMethods {
                 statusMessage.delete();
             }
         });
+    }
 
+    public static async DisconnectBot(server: Server) {
+        await server.queue.clear();
+        var stream = await fs.createReadStream('./src/assets/sounds/volfbot-disconnect.mp3');
+        const sound = await createAudioResource(stream);
+        await server.audioPlayer.play(sound);
+        const connection = getVoiceConnection(server.guild.id);
+
+        if (!server.audioPlayer.playable.includes(connection)) {
+            connection.subscribe(server.audioPlayer);
+        }
+        
+        server.audioPlayer.on("stateChange", (oldState, newState) => {
+            if (newState.status == AudioPlayerStatus.Idle) {
+                connection.disconnect();
+                connection.destroy();
+            }
+        })
 
     }
 
