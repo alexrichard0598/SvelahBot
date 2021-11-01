@@ -111,7 +111,7 @@ export abstract class voice {
       } else if (new RegExp(/list=/).test(url)) {
         url = url.match(/(?:list=)([^&?]*)/)[1].toString();
       } else {
-        embed.description = `Searching youtube for ${url}`;
+        embed.description = `Searching youtube for "${url}"`;
         server.lastChannel.send({ embeds: [embed] });
         url = "https://www.youtube.com/watch?v=" + await this.searchYoutube(url, interaction.guild);
       }
@@ -329,7 +329,7 @@ export abstract class voice {
   async voiceStatusUpdate(voiceStates: [oldState: VoiceState, newState: VoiceState], client: Client) {
     const user = voiceStates[0].member.user;
     const server = await this.getServer(voiceStates[0].guild);
-    
+
     if (user.id == "698214544560095362") {
       if (voiceStates[1].channelId == null) {
         const deleting = await server.lastChannel.send("Cleaning up after disconnect");
@@ -344,8 +344,8 @@ export abstract class voice {
     }
     else {
       const channel = voiceStates[0].channel;
-      if(channel != null) {
-        if(channel.members.filter(m => m.user.bot == false).size == 0) {
+      if (channel != null) {
+        if (channel.members.filter(m => m.user.bot == false).size == 0) {
           getVoiceConnection(server.guild.id).disconnect();
         }
       }
@@ -382,7 +382,7 @@ export abstract class voice {
     }
   }
 
-  private async handleErr(err: Error, guild: Guild) {
+  private async handleErr(err, guild: Guild) {
     const embed = new MessageEmbed();
     const server = await this.getServer(guild);
     embed.title = "An error has occurred";
@@ -407,7 +407,7 @@ export abstract class voice {
       maxResults: 1,
       key: process.env.GOOGLE_API,
     };
-    var res = await youtubeSearch(search, opts).then((results) => results);
+    var res = await youtubeSearch(search, opts).then((results) => results).catch(err => { this.handleErr(err, guild); return null; });
     if (res != null) {
       return res.results[0].id;
     }

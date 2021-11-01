@@ -49,6 +49,6 @@ export abstract class hello_world {
       }
     });
 
-    if(deleting instanceof Message) SharedMethods.ClearMessages(messages, deleting);
+    if(deleting instanceof Message) SharedMethods.ClearMessages(messages, deleting, interaction);
   }
 }
