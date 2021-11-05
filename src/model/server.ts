@@ -13,10 +13,10 @@ export class Server {
   messages: Messages;
   private timer;
 
-  constructor(guild: Guild, queue?: MediaQueue, audioPlayer?: AudioPlayer, channel?: TextBasedChannels) {
+  constructor(guild: Guild) {
     this.guild = guild;
-    this.queue = queue !== undefined ? queue : new MediaQueue();
-    this.audioPlayer = audioPlayer !== undefined ? audioPlayer : new AudioPlayer();
+    this.queue = new MediaQueue();
+    this.audioPlayer = new AudioPlayer();
     this.audioPlayer.on("stateChange", async (oldState, newState) => {
       if (
         oldState.status === AudioPlayerStatus.Playing &&
@@ -40,8 +40,7 @@ export class Server {
       } else if (newState.status == AudioPlayerStatus.Playing) {
         clearTimeout(this.timer);
       }
-    })
-    this.lastChannel = channel !== undefined ? channel : undefined;
+    });
     this.messages = new Messages();
   }
 
