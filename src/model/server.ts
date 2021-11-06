@@ -23,7 +23,7 @@ export class Server {
         newState.status === AudioPlayerStatus.Idle
       ) {
         const embed = new MessageEmbed();
-        this.queue.dequeue();
+        await this.queue.dequeue();
         if (this.queue.hasMedia()) {
           this.audioPlayer.play(this.queue.currentItem());
           const meta = this.queue.currentItem().metadata as IMetadata;
@@ -32,7 +32,7 @@ export class Server {
           embed.description = "Reached end of queue, stoped playing";
           this.timer = setTimeout(() => {
             SharedMethods.DisconnectBot(this);
-            this.lastChannel.send({embeds: [new MessageEmbed().setDescription("Automatically disconnected due to 5 minutes of inactivity")]})
+            this.lastChannel.send({ embeds: [new MessageEmbed().setDescription("Automatically disconnected due to 5 minutes of inactivity")] })
           }, 300000);
         }
 
@@ -44,13 +44,19 @@ export class Server {
     this.messages = new Messages();
   }
 
-  updateStatusMessage(msg) {
-    if (this.messages.status != undefined) this.messages.status.delete();
+  async updateStatusMessage(msg) {
+    if (this.messages.status != undefined) {
+      const status: Message = await this.messages.status.channel.messages.resolve(this.messages.status.id);
+      if(status) status.delete();
+    }
     if (msg instanceof Message) this.messages.status = msg;
   }
 
-  updateQueueMessage(msg) {
-    if (this.messages.queue != undefined) this.messages.queue.delete();
+  async updateQueueMessage(msg) {
+    if (this.messages.queue != undefined) {
+      const queue: Message = await this.messages.queue.channel.messages.resolve(this.messages.queue.id);
+      if(queue) queue.delete();
+    }
     if (msg instanceof Message) this.messages.queue = msg;
   }
 }
