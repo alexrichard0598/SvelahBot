@@ -1,5 +1,5 @@
-import { AudioPlayer, AudioPlayerStatus, getVoiceConnection } from "@discordjs/voice";
-import { Guild, Message, MessageEmbed, TextBasedChannel, TextBasedChannels } from "discord.js";
+import { AudioPlayer, AudioPlayerStatus } from "@discordjs/voice";
+import { Guild, Message, MessageEmbed, TextBasedChannels } from "discord.js";
 import { SharedMethods } from "../commands/sharedMethods";
 import { MediaQueue } from "./mediaQueue";
 import { Messages } from "./messages";
@@ -25,8 +25,9 @@ export class Server {
         const embed = new MessageEmbed();
         await this.queue.dequeue();
         if (this.queue.hasMedia()) {
-          this.audioPlayer.play(this.queue.currentItem());
-          const meta = this.queue.currentItem().metadata as IMetadata;
+          const currentItem = await this.queue.currentItem();
+          this.audioPlayer.play(currentItem.resource);
+          const meta = currentItem.meta as IMetadata;
           embed.description = "Now playing " + meta.title + " [" + meta.queuedBy + "]";
         } else {
           embed.description = "Reached end of queue, stoped playing";

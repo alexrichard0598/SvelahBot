@@ -1,27 +1,20 @@
 import { Client, Discord, On, Slash, SlashOption } from "discordx";
 import {
   CommandInteraction,
-  Guild,
-  GuildMember,
-  Message,
   MessageEmbed,
   VoiceState,
 } from "discord.js";
 import {
   AudioPlayerStatus,
-  AudioResource,
-  createAudioResource,
   getVoiceConnection,
   joinVoiceChannel,
-  StreamType,
 } from "@discordjs/voice";
 
 import { IMetadata, Metadata } from "../model/metadata";
 
-import { Server } from "../model/server";
-import * as youtubeSearch from "youtube-search";
-import { on } from "events";
 import { SharedMethods } from "./sharedMethods";
+import { MediaType } from "../model/mediaType";
+import { YouTubeVideo } from "../model/youtube";
 
 
 @Discord()
@@ -77,7 +70,6 @@ export abstract class voice {
 
       server.lastChannel = interaction.channel; // update the last replied channel
 
-      var audioResource: AudioResource; // create audio resource
       const embed = new MessageEmbed(); // create message embed
       const queue = server.queue; // get the server's queue
       const audioPlayer = server.audioPlayer; // get the server's audioPlayer
@@ -89,39 +81,25 @@ export abstract class voice {
         connection = getVoiceConnection(interaction.guildId);
       }
 
+      const mediaType = SharedMethods.determineMediaType(url);
+
       /* get the youtube video */
-      if (new RegExp(/watch\?v=/).test(url)) {
-        url =
-          "https://www.youtube.com/watch?v=" +
-          url
-            .match(/(?:v=)([^&?]*)/)
-            .toString()
-            .slice(2, 13);
-      } else if (new RegExp(/youtu.be/).test(url)) {
-        url =
-          "https://www.youtube.com/watch?v=" +
-          url
-            .match(/(?:.be\/)([^&?]*)/)
-            .toString()
-            .slice(4, 15);
-      } else if (new RegExp(/^[A-Za-z0-9-_]{11}$/).test(url)) {
-        url = "https://www.youtube.com/watch?v=" + url;
-      } else if (new RegExp(/list=/).test(url)) {
-        url = url.match(/(?:list=)([^&?]*)/)[1].toString();
-      } else {
+      if (mediaType[0] == MediaType.yt_search) {
         embed.description = `Searching youtube for "${url}"`;
         server.lastChannel.send({ embeds: [embed] });
-        url = "https://www.youtube.com/watch?v=" + await SharedMethods.searchYoutube(url, interaction.guild);
       }
 
-      var audioResource: AudioResource; // create audio resource
-      var playlistTitle: string; // get the playlist title
+      var media: YouTubeVideo = await queue.enqueue(url, interaction.user.username);
 
-      if (new RegExp(/watch/).test(url)) {
-        audioResource = await SharedMethods.createYoutubeResource(url, interaction.user.username);
-        queue.enqueue(audioResource);
+      if (mediaType[0] == MediaType.yt_playlist) {
+        embed.title = "Playlist Queued"
+        embed.description = `[${media.meta.playlist.name}](https://www.youtube.com/playlist?list=${url}) [${interaction.user.username}]`;
+        server.updateQueueMessage(await interaction.fetchReply());
       } else {
-        playlistTitle = await SharedMethods.createYoutubePlaylistResource(url, interaction.user.username, server);
+        const meta = media.meta as IMetadata;
+        embed.title = "Song Queued"
+        embed.description = `[${meta.title}](${media.url}) [${meta.queuedBy}]`;
+        server.updateQueueMessage(await interaction.fetchReply());
       }
 
       if (!audioPlayer.playable.includes(connection)) {
@@ -129,21 +107,12 @@ export abstract class voice {
       }
 
       if (audioPlayer.state.status !== AudioPlayerStatus.Playing) {
-        const media = queue.currentItem();
-        audioPlayer.play(media);
-        var meta = media.metadata as IMetadata;
+        const media = await queue.currentItem();
+        audioPlayer.play(media.resource);
+        const meta = media.meta as IMetadata;
         embed.title = "Now Playing";
-        embed.description = `[${meta.title}](${meta.url}) [${meta.queuedBy}]`;
+        embed.description = `[${meta.title}](${media.url}) [${meta.queuedBy}]`;
         server.updateStatusMessage(await interaction.fetchReply());
-      } else if (new RegExp(/watch/).test(url)) {
-        var meta = audioResource.metadata as IMetadata;
-        embed.title = "Song Queued"
-        embed.description = `[${meta.title}](${meta.url}) [${meta.queuedBy}]`;
-        server.updateQueueMessage(await interaction.fetchReply());
-      } else {
-        embed.title = "Playlist Queued"
-        embed.description = `[${playlistTitle}](https://www.youtube.com/playlist?list=${url}) [${meta.queuedBy}]`;
-        server.updateQueueMessage(await interaction.fetchReply());
       }
 
       interaction.editReply({ embeds: [embed] });
@@ -269,9 +238,9 @@ export abstract class voice {
       if (queue.hasMedia()) {
         const queuedSongs = queue.getQueue();
         for (let i = 0; i < queuedSongs.length; i++) {
-          const element = queuedSongs[i];
-          const meta = element.metadata as IMetadata;
-          description += `\n${i + 1}. [${meta.title}](${meta.url}) [${meta.queuedBy}]`;
+          const media = queuedSongs[i];
+          const meta = media.meta as IMetadata;
+          description += `\n${i + 1}. [${meta.title}](${media.url}) [${meta.queuedBy}]`;
         }
       } else {
         description = "No songs currently in queue";
@@ -356,17 +325,17 @@ export abstract class voice {
     try {
       const server = await SharedMethods.getServer(interaction.guild);
       server.updateQueueMessage(await interaction.deferReply({ fetchReply: true })); // Bot is thinking
-      const nowPlaying: AudioResource = server.queue.currentItem();
+      const nowPlaying: YouTubeVideo = await server.queue.currentItem();
       if (!server.queue.hasMedia()) {
         interaction.editReply({ embeds: [new MessageEmbed().setDescription("No songs are currently queued")] })
-      } else if (nowPlaying.metadata instanceof Metadata) {
-        const metadata: Metadata = nowPlaying.metadata as Metadata;
-        const playbackDuration = nowPlaying.playbackDuration;
+      } else if (nowPlaying.meta instanceof Metadata) {
+        const metadata: Metadata = nowPlaying.meta as Metadata;
+        const playbackDuration = nowPlaying.resource.playbackDuration;
         const durationString = `${new Date(playbackDuration).getMinutes()}:${('0' + new Date(playbackDuration).getSeconds()).slice(-2)}`;
         const length = metadata.length;
         const lengthString = `${new Date(length).getMinutes()}:${('0' + new Date(length).getSeconds()).slice(-2)}`;
         const percPlayed: number = Math.ceil((playbackDuration / length) * 100);
-        let msg = `[${metadata.title}](${metadata.url}) [${metadata.queuedBy}]\n\n`;
+        let msg = `[${metadata.title}](${nowPlaying.url}) [${metadata.queuedBy}]\n\n`;
         for (let i = 0; i < 35; i++) {
           if (percPlayed / 3 >= i) {
             msg += '█';
@@ -436,5 +405,5 @@ export abstract class voice {
     }
   }
 
-  
+
 }

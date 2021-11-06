@@ -1,19 +1,21 @@
+import { YouTubePlaylist } from "./youtube";
+
 export interface IMetadata {
   title: string;
   length: number;
-  url: string;
   queuedBy: string;
+  playlist: YouTubePlaylist;
 }
 
 export class Metadata implements IMetadata {
   title: string;
   length: number;
-  url: string;
   queuedBy: string;
+  playlist: YouTubePlaylist;
 
   constructor() {
     this.title = "";
     this.length = 0;
-    this.url = "";
+    this.playlist = new YouTubePlaylist();
   }
 }
