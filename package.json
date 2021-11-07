@@ -1,6 +1,6 @@
 {
   "name": "volfbot",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "A bot for use by Svelah and friends",
   "main": "/src/app.ts",
   "repository": {
@@ -17,6 +17,7 @@
     "dotenv": "^10.0.0",
     "fs": "^0.0.1-security",
     "libsodium-wrappers": "^0.7.9",
+    "moment": "^2.29.1",
     "reflect-metadata": "^0.1.13",
     "ts-log": "^2.2.3",
     "ts-node": "^10.2.1",

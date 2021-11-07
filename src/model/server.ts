@@ -31,6 +31,7 @@ export class Server {
           embed.description = "Now playing " + meta.title + " [" + meta.queuedBy + "]";
         } else {
           embed.description = "Reached end of queue, stoped playing";
+          await clearTimeout(this.timer);
           this.timer = setTimeout(() => {
             SharedMethods.DisconnectBot(this);
             this.lastChannel.send({ embeds: [new MessageEmbed().setDescription("Automatically disconnected due to 5 minutes of inactivity")] })
@@ -38,8 +39,6 @@ export class Server {
         }
 
         this.updateStatusMessage(await this.lastChannel.send({ embeds: [embed] }));
-      } else if (newState.status == AudioPlayerStatus.Playing) {
-        clearTimeout(this.timer);
       }
     });
     this.messages = new Messages();
@@ -48,7 +47,7 @@ export class Server {
   async updateStatusMessage(msg) {
     if (this.messages.status != undefined) {
       const status: Message = await this.messages.status.channel.messages.resolve(this.messages.status.id);
-      if(status) status.delete();
+      if (status) status.delete();
     }
     if (msg instanceof Message) this.messages.status = msg;
   }
@@ -56,7 +55,7 @@ export class Server {
   async updateQueueMessage(msg) {
     if (this.messages.queue != undefined) {
       const queue: Message = await this.messages.queue.channel.messages.resolve(this.messages.queue.id);
-      if(queue) queue.delete();
+      if (queue) queue.delete();
     }
     if (msg instanceof Message) this.messages.queue = msg;
   }
