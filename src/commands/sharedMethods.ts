@@ -2,7 +2,7 @@ import { AudioPlayerStatus, AudioResource, createAudioResource, getVoiceConnecti
 import { CommandInteraction, Guild, Message, MessageEmbed, TextChannel } from "discord.js";
 import { Server } from "../model/server";
 import * as fs from 'fs';
-import youtubeSearch = require("youtube-search");
+import * as youtubeSearch from "youtube-search";
 const PlaylistSummary = require("youtube-playlist-summary");
 const ytdlExec = require("youtube-dl-exec").raw;
 import ytdl = require("ytdl-core");
@@ -10,6 +10,7 @@ import { IMetadata, Metadata } from "../model/metadata";
 import { MediaQueue } from "../model/mediaQueue";
 import { MediaType } from "../model/mediaType";
 import { YouTubePlaylist } from "../model/youtube";
+import { YouTubeSearchOptions, YouTubeSearchPageResults, YouTubeSearchResults } from "youtube-search";
 
 export abstract class SharedMethods {
     private static servers: Server[] = new Array<Server>();
@@ -43,18 +44,30 @@ export abstract class SharedMethods {
             const sound = createAudioResource(stream);
             const connection = await getVoiceConnection(server.guild.id);
 
-            if (!server.audioPlayer.playable.includes(connection)) {
-                await connection.subscribe(server.audioPlayer);
-            }
-
-            await server.audioPlayer.on("stateChange", (oldState, newState) => {
-                if (newState.status == AudioPlayerStatus.Idle) {
-                    connection.disconnect();
-                    connection.destroy();
+            if (connection) {
+                if (!server.audioPlayer.playable.includes(connection)) {
+                    await connection.subscribe(server.audioPlayer);
                 }
-            })
 
-            server.audioPlayer.play(sound);
+                await server.audioPlayer.on("stateChange", (oldState, newState) => {
+                    if (newState.status == AudioPlayerStatus.Idle) {
+                        connection.disconnect();
+                        connection.destroy();
+                    }
+                })
+
+                const deleting = await server.lastChannel.send("Cleaning up after disconnect");
+                server.audioPlayer.play(sound);
+                if (server.lastChannel) {
+                    var messages = new Array<Message>();
+                    await (await server.lastChannel.messages.fetch({ limit: 100 }, { force: true })).forEach(msg => {
+                        if (msg.author.id == "698214544560095362" && msg.id != deleting.id) {
+                            messages.push(msg)
+                        }
+                    });
+                    this.ClearMessages(messages);
+                }
+            }
         } catch (error) {
             this.handleErr(error, server.guild);
         }
@@ -89,22 +102,25 @@ export abstract class SharedMethods {
     public static async handleErr(err, guild: Guild) {
         const embed = new MessageEmbed();
         const server = await this.getServer(guild);
-        embed.title = "An error has occurred";
-        embed.description = err.message.toString();
+        embed.title = "Error!";
+        embed.description = `${err.message}\r\n\`\`\`${err.stack}\`\`\`\r\n**Please let the developer know**`;
         if (server.lastChannel !== undefined)
             server.lastChannel.send({ embeds: [embed] });
         console.log(err);
     }
 
     public static async searchYoutube(search: string): Promise<string> {
-        var opts: youtubeSearch.YouTubeSearchOptions = {
+        var opts: YouTubeSearchOptions = {
             maxResults: 1,
             key: process.env.GOOGLE_API,
         };
-        var res = await youtubeSearch(search, opts).then((results) => results).catch(err => { return null; });
-        if (res != null) {
-            return res.results[0].id;
-        }
+
+        return new Promise<string>((resolve, reject) => {
+            youtubeSearch(search, opts).then((res: {results: YouTubeSearchResults[], pageInfo: YouTubeSearchPageResults}) => {
+                const id: string = res.results[0].id;
+                resolve(id);
+            }).catch(err => reject(err));
+        });
     }
 
     public static async getMetadata(url: string, queuedBy: string, playlist: YouTubePlaylist): Promise<IMetadata> {
@@ -159,35 +175,38 @@ export abstract class SharedMethods {
         return result.playlistTitle;
     }
 
-    public static determineMediaType(url): [MediaType, string] {
+    public static async determineMediaType(url): Promise<[MediaType, string]> {
         var mediaType: MediaType;
-        if (new RegExp(/watch\?v=/).test(url)) {
-            mediaType = MediaType.yt_video;
-            url =
-                "https://www.youtube.com/watch?v=" +
-                url
-                    .match(/(?:v=)([^&?]*)/)
-                    .toString()
-                    .slice(2, 13);
-        } else if (new RegExp(/youtu.be/).test(url)) {
-            mediaType = MediaType.yt_video;
-            url =
-                "https://www.youtube.com/watch?v=" +
-                url
-                    .match(/(?:.be\/)([^&?]*)/)
-                    .toString()
-                    .slice(4, 15);
-        } else if (new RegExp(/^[A-Za-z0-9-_]{11}$/).test(url)) {
-            mediaType = MediaType.yt_video;
-            url = "https://www.youtube.com/watch?v=" + url;
-        } else if (new RegExp(/list=/).test(url)) {
-            mediaType = MediaType.yt_playlist;
-            url = url.match(/(?:list=)([^&?]*)/)[1].toString();
-        } else {
-            mediaType = MediaType.yt_search;
-            url = "https://www.youtube.com/watch?v=" + this.searchYoutube(url);
-        }
-
-        return [mediaType, url];
+        return new Promise<[MediaType, string]>(async (resolve, reject) => {
+            if (new RegExp(/watch\?v=/).test(url)) {
+                mediaType = MediaType.yt_video;
+                url =
+                    "https://www.youtube.com/watch?v=" +
+                    url
+                        .match(/(?:v=)([^&?]*)/)
+                        .toString()
+                        .slice(2, 13);
+            } else if (new RegExp(/youtu.be/).test(url)) {
+                mediaType = MediaType.yt_video;
+                url =
+                    "https://www.youtube.com/watch?v=" +
+                    url
+                        .match(/(?:.be\/)([^&?]*)/)
+                        .toString()
+                        .slice(4, 15);
+            } else if (new RegExp(/^[A-Za-z0-9-_]{11}$/).test(url)) {
+                mediaType = MediaType.yt_video;
+                url = "https://www.youtube.com/watch?v=" + url;
+            } else if (new RegExp(/list=/).test(url)) {
+                mediaType = MediaType.yt_playlist;
+                url = url.match(/(?:list=)([^&?]*)/)[1].toString();
+            } else {
+                mediaType = MediaType.yt_search;
+                url = "https://www.youtube.com/watch?v=" + await this.searchYoutube(url).catch(err => {
+                    return reject(err);
+                });
+            }
+            resolve([mediaType, url]);
+        });
     }
 }

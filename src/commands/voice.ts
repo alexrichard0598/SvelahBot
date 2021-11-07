@@ -15,6 +15,7 @@ import { IMetadata, Metadata } from "../model/metadata";
 import { SharedMethods } from "./sharedMethods";
 import { MediaType } from "../model/mediaType";
 import { YouTubeVideo } from "../model/youtube";
+import moment = require("moment");
 
 
 @Discord()
@@ -81,12 +82,36 @@ export abstract class voice {
         connection = getVoiceConnection(interaction.guildId);
       }
 
-      const mediaType = SharedMethods.determineMediaType(url);
+      const mediaType = await SharedMethods.determineMediaType(url).catch(err => {
+        if (err.response.data.error.errors[0].reason == 'quotaExceeded') {
+          var time = moment().hour(0).minute(0);
+          if(time.isDST()) {
+            time = time.add(1, 'day');
+            time = time.utcOffset(-480);
+          } else {
+            time = time.add(1, 'day');
+            time = time.utcOffset(-420);
+          }
+         
+          interaction.editReply({
+            embeds: [
+              new MessageEmbed()
+                .setTitle("Daily YouTube Search Limit Reached!")
+                .setDescription(`Limit will reset ${time.fromNow()}`)
+            ]
+          });
+        } else {
+          interaction.editReply({ embeds: [new MessageEmbed().setDescription(`${err.message}\r\n\`\`\`${err.stack}\`\`\`\r\nPlease let the developer know`).setTitle("Error!")] });
+        }
+      });
+
+      if(mediaType == undefined) return;
 
       /* get the youtube video */
       if (mediaType[0] == MediaType.yt_search) {
         embed.description = `Searching youtube for "${url}"`;
         server.lastChannel.send({ embeds: [embed] });
+        url = mediaType[1];
       }
 
       var media: YouTubeVideo = await queue.enqueue(url, interaction.user.username);
@@ -358,14 +383,7 @@ export abstract class voice {
     const user = voiceStates[0].member.user;
     const server = await SharedMethods.getServer(voiceStates[0].guild);
 
-    if (user.id == "698214544560095362") {
-      if (voiceStates[1].channelId == null) {
-        const deleting = await server.lastChannel.send("Cleaning up after disconnect");
-        server.updateQueueMessage(undefined);
-        server.updateStatusMessage(undefined);
-      }
-    }
-    else {
+    if (user.id != "698214544560095362") {
       const channel = voiceStates[0].channel;
       if (channel != null) {
         if (channel.members.filter(m => m.user.bot == false).size == 0) {

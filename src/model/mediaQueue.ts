@@ -4,7 +4,7 @@ import { MediaType } from "./mediaType";
 import { createHash } from "crypto";
 
 export class MediaQueue {
-  private queue: Array<YouTubeVideo>; //TODO: Convert to list of URLs and fetch audio as needed
+  private queue: Array<YouTubeVideo>;
   private looping: Boolean = false;
 
   constructor() {
@@ -12,11 +12,11 @@ export class MediaQueue {
   }
 
   async enqueue(url: string, enqueuedBy: string, playlist?: YouTubePlaylist): Promise<YouTubeVideo> {
-    const video = await new YouTubeVideo(url)
-    const hash = await createHash("sha256");
-    await hash.update(`${this.queue.length}${url}${Date.now()}`);
-    const id = await hash.digest("hex");
-    video.id = await id;
+    const video = new YouTubeVideo(url)
+    const hash = createHash("sha256");
+    hash.update(`${this.queue.length}${url}${Date.now()}`);
+    const id = hash.digest("hex");
+    video.id = id;
     video.meta = await SharedMethods.getMetadata(url, enqueuedBy, playlist);
     this.queue.push(video);
 
