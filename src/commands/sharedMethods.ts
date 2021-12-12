@@ -1,4 +1,4 @@
-import { AudioPlayerStatus, AudioResource, createAudioResource, getVoiceConnection, StreamType } from "@discordjs/voice";
+import { AudioPlayerStatus, AudioResource, createAudioResource, getVoiceConnection, StreamType, VoiceConnectionStatus } from "@discordjs/voice";
 import { CommandInteraction, Guild, Message, MessageEmbed, TextChannel } from "discord.js";
 import { Server } from "../model/server";
 import * as fs from 'fs';
@@ -49,8 +49,15 @@ export abstract class SharedMethods {
                     await connection.subscribe(server.audioPlayer);
                 }
 
+
+
                 await server.audioPlayer.on("stateChange", (oldState, newState) => {
-                    if (newState.status == AudioPlayerStatus.Idle) {
+                    if (
+                        newState.status == AudioPlayerStatus.Idle
+                        && connection.state.status !== VoiceConnectionStatus.Disconnected
+                        && connection.state.status !== VoiceConnectionStatus.Destroyed
+                    ) {
+
                         connection.disconnect();
                         connection.destroy();
                     }
@@ -96,6 +103,7 @@ export abstract class SharedMethods {
             }
             return foundServer;
         } catch (error) {
+            console.log(error);
         }
     }
 
@@ -116,7 +124,7 @@ export abstract class SharedMethods {
         };
 
         return new Promise<string>((resolve, reject) => {
-            youtubeSearch(search, opts).then((res: {results: YouTubeSearchResults[], pageInfo: YouTubeSearchPageResults}) => {
+            youtubeSearch(search, opts).then((res: { results: YouTubeSearchResults[], pageInfo: YouTubeSearchPageResults }) => {
                 const id: string = res.results[0].id;
                 resolve(id);
             }).catch(err => reject(err));

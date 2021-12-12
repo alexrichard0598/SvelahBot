@@ -132,7 +132,12 @@ export abstract class voice {
       }
 
       if (audioPlayer.state.status !== AudioPlayerStatus.Playing) {
-        const media = await queue.currentItem();
+        var media = await queue.currentItem();
+        while (media.resource.ended) {
+          await queue.dequeue();
+          media = await queue.currentItem() 
+        }
+        
         audioPlayer.play(media.resource);
         const meta = media.meta as IMetadata;
         embed.title = "Now Playing";
