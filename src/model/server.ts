@@ -1,5 +1,5 @@
 import { AudioPlayer, AudioPlayerStatus } from "@discordjs/voice";
-import { Guild, Message, MessageEmbed, TextBasedChannels } from "discord.js";
+import { Guild, Message, MessageEmbed, TextBasedChannel } from "discord.js";
 import { SharedMethods } from "../commands/sharedMethods";
 import { MediaQueue } from "./mediaQueue";
 import { Messages } from "./messages";
@@ -9,7 +9,7 @@ export class Server {
   guild: Guild;
   queue: MediaQueue;
   audioPlayer: AudioPlayer;
-  lastChannel: TextBasedChannels;
+  lastChannel: TextBasedChannel;
   messages: Messages;
   private timer;
 
@@ -19,8 +19,7 @@ export class Server {
     this.audioPlayer = new AudioPlayer();
     this.audioPlayer.on("stateChange", async (oldState, newState) => {
       if (
-        newState.status === AudioPlayerStatus.Idle &&
-        !this.queue.hasMedia()
+        newState.status === AudioPlayerStatus.Idle
       ) {
         const embed = new MessageEmbed();
         await this.queue.dequeue();
@@ -51,7 +50,9 @@ export class Server {
   async updateStatusMessage(msg) {
     if (this.messages.status != undefined) {
       const status: Message = await this.messages.status.channel.messages.resolve(this.messages.status.id);
-      if (status.deletable) status.delete();
+      if (status != null) {
+        if (status.deletable) status.delete();
+      }
     }
     if (msg instanceof Message) this.messages.status = msg;
   }

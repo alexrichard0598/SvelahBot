@@ -1,31 +1,32 @@
 import chalk = require("chalk");
 import { Logger } from "ts-log";
 import * as fs from "fs";
+import * as path from "path";
 
-const logFile = '../log.txt';
+const logFile = path.join(__dirname, '..', 'log.txt');
 
 class Log implements Logger {
   [x: string]: any;
 
   trace(message?: any, ...optionalParams: any[]): void {
-    console.log(chalk.bgWhite.black("TRACE: " + message));
-    fs.appendFileSync(logFile, '\n' + "TRACE: " + message);
+    console.log(chalk.bgWhite.black("[" + new Date().toISOString() + "] " + "TRACE: " + message));
+    fs.appendFileSync(logFile, "[" + new Date().toISOString() + "] " + "TRACE: " + message + '\n');
   }
   debug(message?: any, ...optionalParams: any[]): void {
-    console.log(chalk.yellow("DEBUG: " + message));
-    fs.appendFileSync(logFile, '\n' + "DEBUG: " + message);
+    console.log(chalk.yellow("DEBUG: " + "[" + new Date().toISOString() + "] " + message));
+    fs.appendFileSync(logFile, "[" + new Date().toISOString() + "] " + "DEBUG: " + message + '\n');
   }
   info(message?: any, ...optionalParams: any[]): void {
-    console.log(chalk.blue("INFO: " + message));
-    fs.appendFileSync(logFile, '\n' + "INFO: " + message);
+    console.log(chalk.blue("INFO: " + "[" + new Date().toISOString() + "] " + message));
+    fs.appendFileSync(logFile, "[" + new Date().toISOString() + "] " + "INFO: " + message + '\n');
   }
   warn(message?: any, ...optionalParams: any[]): void {
-    console.log(chalk.rgb(255, 165, 0)("WARNING: " + message));
-    fs.appendFileSync(logFile, '\n' + "WARNING: " + message);
+    console.log(chalk.rgb(255, 165, 0)("[" + new Date().toISOString() + "] " + "WARNING: " + message));
+    fs.appendFileSync(logFile, "[" + new Date().toISOString() + "] " + "WARNING: " + message + '\n');
   }
   error(message?: any, ...optionalParams: any[]): void {
-    console.log(chalk.bgRed.white("ERROR: " + message));
-    fs.appendFileSync(logFile, '\n' + "ERROR: " + message);
+    console.log(chalk.bgRed.white("[" + new Date().toISOString() + "] " + "ERROR: " + message));
+    fs.appendFileSync(logFile, "[" + new Date().toISOString() + "] " + "ERROR: " + message + '\n');
   }
 }
 

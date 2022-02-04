@@ -6,6 +6,7 @@ import {
 } from "discord.js";
 import {
   AudioPlayerStatus,
+  DiscordGatewayAdapterCreator,
   getVoiceConnection,
   joinVoiceChannel,
 } from "@discordjs/voice";
@@ -418,7 +419,7 @@ export abstract class voice {
         await joinVoiceChannel({
           channelId: vc.id,
           guildId: vc.guildId,
-          adapterCreator: vc.guild.voiceAdapterCreator,
+          adapterCreator: vc.guild.voiceAdapterCreator as unknown as DiscordGatewayAdapterCreator,
         });
         embed.description = "Joined " + vc.name;
       }
