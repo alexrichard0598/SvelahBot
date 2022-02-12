@@ -60,7 +60,9 @@ export class Server {
   async updateQueueMessage(msg) {
     if (this.messages.queue != undefined) {
       const queue: Message = await this.messages.queue.channel.messages.resolve(this.messages.queue.id);
-      if (queue.deletable) queue.delete();
+      if (queue != null) {
+        if (queue.deletable) queue.delete();
+      }
     }
     if (msg instanceof Message) this.messages.queue = msg;
   }

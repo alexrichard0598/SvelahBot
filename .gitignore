@@ -3,3 +3,4 @@ config.json
 build
 .vscode
 env/*
+log.txt

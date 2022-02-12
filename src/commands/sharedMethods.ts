@@ -1,4 +1,4 @@
-import { AudioPlayerStatus, AudioResource, createAudioResource, getVoiceConnection, StreamType, VoiceConnectionStatus } from "@discordjs/voice";
+import { AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection, StreamType, VoiceConnectionStatus } from "@discordjs/voice";
 import { CommandInteraction, Guild, Message, MessageEmbed, TextChannel } from "discord.js";
 import { Server } from "../model/server";
 import * as fs from 'fs';
@@ -145,7 +145,7 @@ export abstract class SharedMethods {
         url: string,
         queuedBy: string
     ): Promise<AudioResource<unknown>> {
-        const stream = ytdlExec(
+        const ytStream = ytdlExec(
             url,
             {
                 o: "-",
@@ -156,7 +156,10 @@ export abstract class SharedMethods {
             { stdio: ["ignore", "pipe", "ignore"] }
         );
         var audioResource: AudioResource;
-        audioResource = createAudioResource(stream.stdout, { inputType: StreamType.WebmOpus });
+
+        const { stream, type } = await demuxProbe(ytStream.stdout);
+        audioResource = createAudioResource(stream, { inputType: type });
+
         return audioResource;
     }
 
