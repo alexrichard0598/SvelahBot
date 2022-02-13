@@ -1,16 +1,17 @@
+import path = require("path");
 import { AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection, StreamType, VoiceConnectionStatus } from "@discordjs/voice";
 import { CommandInteraction, Guild, Message, MessageEmbed, TextChannel } from "discord.js";
 import { Server } from "../model/server";
 import * as fs from 'fs';
 import * as youtubeSearch from "youtube-search";
-const PlaylistSummary = require("youtube-playlist-summary");
-const ytdlExec = require("youtube-dl-exec").raw;
-import ytdl = require("ytdl-core");
+import * as youtubeDL from "youtube-dl-exec"
+const ytdl = youtubeDL.create(path.join(__dirname, "../ytdl/yt-dlp"));
 import { IMetadata, Metadata } from "../model/metadata";
 import { MediaQueue } from "../model/mediaQueue";
 import { MediaType } from "../model/mediaType";
-import { YouTubePlaylist } from "../model/youtube";
+import { YouTubePlaylist, YouTubeVideo } from "../model/youtube";
 import { YouTubeSearchOptions, YouTubeSearchPageResults, YouTubeSearchResults } from "youtube-search";
+
 
 export abstract class SharedMethods {
     private static servers: Server[] = new Array<Server>();
@@ -133,11 +134,27 @@ export abstract class SharedMethods {
 
     public static async getMetadata(url: string, queuedBy: string, playlist: YouTubePlaylist): Promise<IMetadata> {
         const meta = await new Metadata();
-        const details = await ytdl.getInfo(url);
-        meta.title = details.videoDetails.title;
-        meta.length = parseInt(details.videoDetails.lengthSeconds) * 1000;
-        meta.queuedBy = queuedBy;
-        meta.playlist = playlist;
+
+        try {
+
+            const raw = await ytdl.raw(url, {
+                dumpSingleJson: true,
+                simulate: true
+            });
+
+            const details = JSON.parse(raw.stdout);
+
+            meta.title = details.title;
+            meta.length = details.duration * 1000;
+            meta.queuedBy = queuedBy;
+            meta.playlist = playlist;
+
+        } catch (error) {
+            if (!(error.message as string).includes("Command failed")) {
+                throw error;
+            }
+        }
+
         return meta;
     }
 
@@ -145,19 +162,21 @@ export abstract class SharedMethods {
         url: string,
         queuedBy: string
     ): Promise<AudioResource<unknown>> {
-        const ytStream = ytdlExec(
+        const ytStream = ytdl.raw(
             url,
             {
-                o: "-",
-                q: "",
-                f: "bestaudio[ext=webm+acodec=opus+asr=48000]/bestaudio",
-                r: "100k",
+                output: "-",
+                quiet: true,
+                format: "bestaudio[ext=webm][acodec=opus][asr=48000]",
+                limitRate: "100k",
+                
             },
             { stdio: ["ignore", "pipe", "ignore"] }
-        );
+        ).stdout;
+
         var audioResource: AudioResource;
 
-        const { stream, type } = await demuxProbe(ytStream.stdout);
+        const { stream, type } = await demuxProbe(ytStream);
         audioResource = createAudioResource(stream, { inputType: type });
 
         return audioResource;
@@ -167,23 +186,42 @@ export abstract class SharedMethods {
         playlistId: string,
         enqueuedBy: string,
         server: Server
-    ): Promise<string> {
-        const ps = new PlaylistSummary({
-            GOOGLE_API_KEY: process.env.GOOGLE_API,
+    ): Promise<YouTubeVideo> {
+
+        // const result = JSON.parse(await youtubeDlWrap.execPromise([
+        //     playlistId, "-i",
+        //     "-q", "--no-warnings",
+        //     "--flat-playlist", "--dump-single-json",
+        // ]));
+
+        const raw = await ytdl.raw(playlistId, {
+            dumpSingleJson: true,
+            simulate: true,
+            flatPlaylist: true
         });
 
-        var result = await ps
-            .getPlaylistItems(playlistId)
-            .then(async (result) => result);
+        const result = JSON.parse(raw.stdout);
 
-        for (let i = 0; i < result.items.length; i++) {
-            const video = result.items[i];
-            const url = video.videoUrl;
-            const title = video.playlistTitle;
-            server.queue.enqueue(url, enqueuedBy, new YouTubePlaylist(title));
+        var video: YouTubeVideo;
+
+        for (let i = 0; i < result.entries.length; i++) {
+            const vid = result.entries[i];
+            const url = vid.url;
+            const title = result.title;
+            const meta = new Metadata();
+            meta.title = vid.title;
+            meta.length = vid.duration * 1000;
+            meta.playlist = title;
+            meta.queuedBy = enqueuedBy;
+
+            if (i == 0) {
+                video = await server.queue.enqueue(url, enqueuedBy, meta);;
+            } else {
+                server.queue.enqueue(url, enqueuedBy, meta);
+            }
         }
 
-        return result.playlistTitle;
+        return video;
     }
 
     public static async determineMediaType(url): Promise<[MediaType, string]> {

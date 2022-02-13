@@ -86,14 +86,14 @@ export abstract class voice {
       const mediaType = await SharedMethods.determineMediaType(url).catch(err => {
         if (err.response.data.error.errors[0].reason == 'quotaExceeded') {
           var time = moment().hour(0).minute(0);
-          if(time.isDST()) {
+          if (time.isDST()) {
             time = time.add(1, 'day');
             time = time.utcOffset(-480);
           } else {
             time = time.add(1, 'day');
             time = time.utcOffset(-420);
           }
-         
+
           interaction.editReply({
             embeds: [
               new MessageEmbed()
@@ -106,7 +106,7 @@ export abstract class voice {
         }
       });
 
-      if(mediaType == undefined) return;
+      if (mediaType == undefined) return;
 
       /* get the youtube video */
       if (mediaType[0] == MediaType.yt_search) {
@@ -115,9 +115,25 @@ export abstract class voice {
         url = mediaType[1];
       }
 
-      var media: YouTubeVideo = await queue.enqueue(url, interaction.user.username);
+      var media: YouTubeVideo;
 
       if (mediaType[0] == MediaType.yt_playlist) {
+        media = await SharedMethods.createYoutubePlaylistResource(mediaType[1], interaction.user.username, server);
+      } else {
+        media = await queue.enqueue(url, interaction.user.username);
+      }
+
+      if (media == undefined) {
+        embed.title = "Unknown Error"
+        embed.description = "Could not get queued item info, please let the developer know what happened.";
+        server.updateQueueMessage(await interaction.fetchReply());
+      } else if (media.meta.title == "") {
+        embed.title = "Failed to queue video"
+        embed.description = "This video is unavailable to be queued. Sorry about that."
+        server.updateQueueMessage(await interaction.fetchReply());
+        interaction.editReply({ embeds: [embed] });
+        return;
+      } else if (mediaType[0] == MediaType.yt_playlist) {
         embed.title = "Playlist Queued"
         embed.description = `[${media.meta.playlist.name}](https://www.youtube.com/playlist?list=${url}) [${interaction.user.username}]`;
         server.updateQueueMessage(await interaction.fetchReply());
@@ -136,9 +152,9 @@ export abstract class voice {
         var media = await queue.currentItem();
         while (media.resource.ended) {
           await queue.dequeue();
-          media = await queue.currentItem() 
+          media = await queue.currentItem()
         }
-        
+
         audioPlayer.play(media.resource);
         const meta = media.meta as IMetadata;
         embed.title = "Now Playing";
@@ -202,7 +218,7 @@ export abstract class voice {
     }
   }
 
-  @Slash("pause", { description: "Plays music" })
+  @Slash("pause", { description: "Pauses any currently playing music" })
   async pause(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await SharedMethods.getServer(interaction.guild);
@@ -247,19 +263,19 @@ export abstract class voice {
   }
 
   @Slash("queue", { description: "View the current queue" })
-  async viewQueue(interaction?: CommandInteraction): Promise<void> {
+  async viewQueue(
+    @SlashOption("page", { description: "The page of the queue to display", required: false }) page: string,
+    interaction: CommandInteraction
+  ): Promise<void> {
     try {
-      const userCalled = interaction !== undefined;
+      await interaction.deferReply();
       const server = await SharedMethods.getServer(interaction.guild);
       const queue = server.queue;
       const audioPlayer = server.audioPlayer;
-      if (userCalled) {
-        server.lastChannel = interaction.channel;
-        await interaction.deferReply();
-      }
+      server.lastChannel = interaction.channel;
 
       const embed = new MessageEmbed();
-      const title =
+      var title =
         audioPlayer.state.status == AudioPlayerStatus.Playing
           ? "Now Playing"
           : "Current Queue";
@@ -268,10 +284,29 @@ export abstract class voice {
 
       if (queue.hasMedia()) {
         const queuedSongs = queue.getQueue();
-        for (let i = 0; i < queuedSongs.length; i++) {
+
+        const parsedInt = parseInt(page);
+        var pageInt = 1;
+        if(!isNaN(parsedInt) && (parsedInt - 1) * 10 < queuedSongs.length && parsedInt > 1) {
+          pageInt = parsedInt;
+        }
+
+        if (queuedSongs.length > 9) {
+            title += ` — Page ${pageInt} of ${Math.ceil(queuedSongs.length / 10)}`
+        }
+
+        for (let i = Math.max((pageInt - 1) * 10 - 1, 0); i < queuedSongs.length; i++) {
           const media = queuedSongs[i];
           const meta = media.meta as IMetadata;
-          description += `\n${i + 1}. [${meta.title}](${media.url}) [${meta.queuedBy}]`;
+          description += `\n${i + 1}. [${meta.title.slice(0, 256)}](${media.url}) [${meta.queuedBy}]`;
+          if (i == pageInt * 10 - 1) {
+            const j = queuedSongs.length;
+            const endMedia = queuedSongs[j - 1];
+            const endMeta = endMedia.meta as IMetadata;
+            description += '\n...';
+            description += `\n${j}. [${endMeta.title}](${endMedia.url}) [${endMeta.queuedBy}]`;
+            break;
+          }
         }
       } else {
         description = "No songs currently in queue";
@@ -280,15 +315,8 @@ export abstract class voice {
       embed.setTitle(title);
       embed.setDescription(description);
 
-      if (userCalled) {
-        interaction.editReply({ embeds: [embed] });
-      } else {
-        if (server.lastChannel !== undefined)
-          server.lastChannel.send({
-            embeds: [embed],
-          });
-      }
 
+      interaction.editReply({ embeds: [embed] });
       server.updateQueueMessage(await interaction.fetchReply());
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);

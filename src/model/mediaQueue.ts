@@ -2,6 +2,7 @@ import { SharedMethods } from "../commands/sharedMethods";
 import { YouTubePlaylist, YouTubeVideo } from "./youtube";
 import { MediaType } from "./mediaType";
 import { createHash } from "crypto";
+import { Metadata } from "./metadata";
 
 export class MediaQueue {
   private queue: Array<YouTubeVideo>;
@@ -11,14 +12,16 @@ export class MediaQueue {
     this.queue = new Array<YouTubeVideo>();
   }
 
-  async enqueue(url: string, enqueuedBy: string, playlist?: YouTubePlaylist): Promise<YouTubeVideo> {
+  async enqueue(url: string, enqueuedBy: string, meta?: Metadata): Promise<YouTubeVideo> {
     const video = new YouTubeVideo(url)
     const hash = createHash("sha256");
     hash.update(`${this.queue.length}${url}${Date.now()}`);
     const id = hash.digest("hex");
     video.id = id;
-    video.meta = await SharedMethods.getMetadata(url, enqueuedBy, playlist);
-    this.queue.push(video);
+    video.meta = meta? meta : await SharedMethods.getMetadata(url, enqueuedBy, null);
+    if (video.meta.title !== "") {
+      this.queue.push(video);
+    }
 
     return video;
   }
@@ -51,6 +54,7 @@ export class MediaQueue {
   }
 
   async currentItem(): Promise<YouTubeVideo> {
+    if(this.queue[0] == undefined) return undefined;
     if (this.queue[0].resource == undefined) {
       const typeUrl = await SharedMethods.determineMediaType(this.queue[0].url);
       if (typeUrl[0] == MediaType.yt_video) {
