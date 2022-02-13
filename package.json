@@ -1,6 +1,6 @@
 {
   "name": "volfbot",
-  "version": "1.2.5",
+  "version": "1.3",
   "description": "A bot for use by Svelah and friends",
   "main": "/src/app.ts",
   "repository": {
