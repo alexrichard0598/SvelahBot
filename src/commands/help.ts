@@ -17,7 +17,7 @@ export abstract class Help {
 
     var embed = new MessageEmbed();
 
-    embed.addFields([{ name: "Help Message", value: helptext }]);
+    embed.setTitle("Help Text").setDescription(helptext);
 
     interaction.reply({ embeds: [embed] });
   }
