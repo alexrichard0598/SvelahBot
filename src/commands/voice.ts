@@ -10,9 +10,7 @@ import {
   getVoiceConnection,
   joinVoiceChannel,
 } from "@discordjs/voice";
-
 import { IMetadata, Metadata } from "../model/metadata";
-
 import { SharedMethods } from "./sharedMethods";
 import { MediaType } from "../model/mediaType";
 import { YouTubeVideo } from "../model/youtube";
@@ -20,7 +18,7 @@ import moment = require("moment");
 
 
 @Discord()
-export abstract class voice {
+export abstract class Voice {
   @Slash("join", {
     description: "Join the voice channel you are currently connected to",
   })
@@ -78,37 +76,15 @@ export abstract class voice {
         connection = getVoiceConnection(interaction.guildId);
       }
 
-      const mediaType = await SharedMethods.determineMediaType(url).catch(err => {
-        if (err.response.data.error.errors[0].reason == 'quotaExceeded') {
-          var time = moment().hour(0).minute(0);
-          if (time.isDST()) {
-            time = time.add(1, 'day');
-            time = time.utcOffset(-480);
-          } else {
-            time = time.add(1, 'day');
-            time = time.utcOffset(-420);
-          }
-
-          interaction.editReply({
-            embeds: [
-              new MessageEmbed()
-                .setTitle("Daily YouTube Search Limit Reached!")
-                .setDescription(`Limit will reset ${time.fromNow()}`)
-            ]
-          });
+      const mediaType = await SharedMethods.determineMediaType(url, server).catch(err => {
+        if (err instanceof MessageEmbed) {
+          interaction.editReply({ embeds: [err] });
         } else {
-          interaction.editReply({ embeds: [new MessageEmbed().setDescription(`${err.message}\r\n\`\`\`${err.stack}\`\`\`\r\nPlease let the developer know`).setTitle("Error!")] });
+          throw err;
         }
       });
 
       if (mediaType == undefined) return;
-
-      /* get the youtube video */
-      if (mediaType[0] == MediaType.yt_search) {
-        embed.description = `Searching youtube for "${url}"`;
-        server.updateStatusMessage(await (await server.lastChannel.send({ embeds: [embed] })));
-        url = mediaType[1];
-      }
 
       var media: YouTubeVideo;
 
@@ -118,37 +94,25 @@ export abstract class voice {
         media = await queue.enqueue(mediaType[1], interaction.user.username);
       }
 
-      if (media == undefined) {
-        embed.title = "Unknown Error"
-        embed.description = "Could not get queued item info, please let the developer know what happened.";
-      } else if (media.meta.title == "") {
-        embed.title = "Failed to queue video"
-        embed.description = "This video is unavailable to be queued. Sorry about that."
-        return;
-      } else if (mediaType[0] == MediaType.yt_playlist) {
-        embed.title = "Playlist Queued"
-        embed.description = `[${media.meta.playlist.name}](https://www.youtube.com/playlist?list=${url}) [${interaction.user.username}]`;
-      } else {
-        const meta = media.meta as IMetadata;
-        embed.title = "Song Queued"
-        embed.description = `[${meta.title}](${media.url}) [${meta.queuedBy}]`;
-      }
+      var mediaStatus = this.checkMediaStatus(media, mediaType[0] == MediaType.yt_playlist, interaction.user.username);
 
-      server.updateQueueMessage(await server.lastChannel.send({embeds: [embed]}));
+
+      server.updateQueueMessage(await server.lastChannel.send({ embeds: [mediaStatus[1]] }));
+      if (mediaStatus[0]) return;
 
       if (!audioPlayer.playable.includes(connection)) {
         connection.subscribe(audioPlayer);
       }
 
       if (audioPlayer.state.status !== AudioPlayerStatus.Playing) {
-        var media = await queue.currentItem();
+        media = await queue.currentItem();
         while (media.resource.ended) {
           await queue.dequeue();
           media = await queue.currentItem()
         }
 
         audioPlayer.play(media.resource);
-        const meta = media.meta as IMetadata;
+        const meta = media.meta;
         embed.title = "Now Playing";
         embed.description = `[${meta.title}](${media.url}) [${meta.queuedBy}]`;
         server.updateStatusMessage(await interaction.fetchReply());
@@ -250,8 +214,8 @@ export abstract class voice {
   })
   async ping(interaction: CommandInteraction): Promise<void> {
     try {
-      const server = await this.initCommand({ interaction: interaction, statusMessage: true });
-      
+      await this.initCommand({ interaction: interaction, statusMessage: true });
+
       if (getVoiceConnection(interaction.guildId) === undefined) {
         interaction.editReply("I'm not currently in an voice channels");
       } else {
@@ -398,7 +362,7 @@ export abstract class voice {
       if (!server.queue.hasMedia()) {
         interaction.editReply({ embeds: [new MessageEmbed().setDescription("No songs are currently queued")] })
       } else if (nowPlaying.meta instanceof Metadata) {
-        const metadata: Metadata = nowPlaying.meta as Metadata;
+        const metadata: Metadata = nowPlaying.meta;
         const playbackDuration = nowPlaying.resource.playbackDuration;
         const durationString = `${new Date(playbackDuration).getMinutes()}:${('0' + new Date(playbackDuration).getSeconds()).slice(-2)}`;
         const length = metadata.length;
@@ -449,7 +413,6 @@ export abstract class voice {
       } else if (isNaN(index)) {
         interaction.editReply({ embeds: [new MessageEmbed().setDescription(`Could not parse ${indexString}, please enter a whole number`)] });
       } else if (index == 1) {
-        const song = server.queue.getItemAt(index - 1);
         server.queue.removeItemAt(index - 1);
         server.audioPlayer.stop();
         interaction.editReply({ embeds: [new MessageEmbed().setDescription(`Currently playing song removed`)] });
@@ -473,20 +436,44 @@ export abstract class voice {
     if (user.id != "698214544560095362") {
       const channel = voiceStates[0].channel;
       if (channel != null) {
-        if (channel.members.filter(m => m.user.bot == false).size == 0) {
+        if (channel.members.filter(m => !m.user.bot).size == 0) {
           SharedMethods.disconnectBot(server);
         }
       }
     }
   }
 
-  private async initCommand({ interaction, statusMessage, queueMessage }: initCommandParams) {
+  private async initCommand({ interaction, statusMessage, queueMessage }: InitCommandParams) {
     const reply = interaction.deferReply({ fetchReply: true });
     const server = await SharedMethods.getServer(interaction.guild);
     if (statusMessage) server.updateStatusMessage(reply);
     if (queueMessage) server.updateQueueMessage(reply);
     server.lastChannel = interaction.channel;
     return server
+  }
+
+  private checkMediaStatus(media: YouTubeVideo, isPlaylist: boolean, username: string): [boolean, MessageEmbed] {
+    var embed = new MessageEmbed();
+    var mediaSucces = true;
+
+    if (media == undefined) {
+      embed.title = "Unknown Error"
+      embed.description = "Could not get queued item info, please let the developer know what happened.";
+      mediaSucces = false;
+    } else if (media.meta.title == "") {
+      embed.title = "Failed to queue video"
+      embed.description = "This video is unavailable to be queued. Sorry about that."
+      mediaSucces = false;
+    } else if (isPlaylist) {
+      embed.title = "Playlist Queued"
+      embed.description = `[${media.meta.playlist.name}](https://www.youtube.com/playlist?list=${media.url}) [${username}]`;
+    } else {
+      const meta = media.meta as IMetadata;
+      embed.title = "Song Queued"
+      embed.description = `[${meta.title}](${media.url}) [${meta.queuedBy}]`;
+    }
+
+    return [mediaSucces, embed];
   }
 
   /**
@@ -506,7 +493,7 @@ export abstract class voice {
       if (vc === null) {
         embed.description = "You are not part of a voice chat, please join a voice chat first.";
       } else {
-        await joinVoiceChannel({
+        joinVoiceChannel({
           channelId: vc.id,
           guildId: vc.guildId,
           adapterCreator: vc.guild.voiceAdapterCreator as unknown as DiscordGatewayAdapterCreator,
@@ -520,7 +507,7 @@ export abstract class voice {
   }
 }
 
-interface initCommandParams {
+interface InitCommandParams {
   interaction: CommandInteraction;
   statusMessage?: boolean;
   queueMessage?: boolean;

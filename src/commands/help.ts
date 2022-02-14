@@ -1,12 +1,11 @@
 import { Discord, Slash } from "discordx";
-import { CommandInteraction, Message } from "discord.js";
+import { CommandInteraction, MessageEmbed } from "discord.js";
 import { log } from "../logging";
-import { MessageEmbed } from "discord.js";
 import * as fs from "fs";
 import * as path from "path";
 
 @Discord()
-export abstract class help {
+export abstract class Help {
   @Slash("help", { description: "A help message" })
   async help(interaction: CommandInteraction): Promise<void> {
     const helpfile = path.join(__dirname, "..", "..", "help.txt");

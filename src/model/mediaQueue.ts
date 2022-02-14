@@ -1,12 +1,12 @@
 import { SharedMethods } from "../commands/sharedMethods";
-import { YouTubePlaylist, YouTubeVideo } from "./youtube";
+import { YouTubeVideo } from "./youtube";
 import { MediaType } from "./mediaType";
 import { createHash } from "crypto";
 import { Metadata } from "./metadata";
 
 export class MediaQueue {
   private queue: Array<YouTubeVideo>;
-  private looping: Boolean = false;
+  private looping: boolean = false;
 
   constructor() {
     this.queue = new Array<YouTubeVideo>();
@@ -71,7 +71,7 @@ export class MediaQueue {
       } else if (typeUrl[0] == MediaType.yt_playlist) {
         SharedMethods.createYoutubePlaylistResource(typeUrl[1], this.queue[0].meta.queuedBy, await SharedMethods.getServerByMediaQueue(this));
         this.queue.shift();
-        return await this.currentItem();
+        return this.currentItem();
       }
     }
     return this.queue[0];

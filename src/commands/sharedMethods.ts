@@ -1,5 +1,5 @@
 import path = require("path");
-import { AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection, StreamType, VoiceConnectionStatus } from "@discordjs/voice";
+import { AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection, VoiceConnectionStatus } from "@discordjs/voice";
 import { CommandInteraction, Guild, Message, MessageEmbed, TextBasedChannel, TextChannel } from "discord.js";
 import { Server } from "../model/server";
 import * as fs from 'fs';
@@ -11,6 +11,7 @@ import { MediaQueue } from "../model/mediaQueue";
 import { MediaType } from "../model/mediaType";
 import { YouTubePlaylist, YouTubeVideo } from "../model/youtube";
 import { YouTubeSearchOptions, YouTubeSearchPageResults, YouTubeSearchResults } from "youtube-search";
+import moment = require("moment");
 
 
 export abstract class SharedMethods {
@@ -22,7 +23,7 @@ export abstract class SharedMethods {
         const server = messages.length > 0 ? await this.getServer(messages[0].guild) : undefined;
         if (messages.length > 0) {
             if (server.lastChannel instanceof TextChannel) {
-                (server.lastChannel as TextChannel).bulkDelete(messages);
+                server.lastChannel.bulkDelete(messages);
                 embed = new MessageEmbed().setDescription("Messages deleted");
             } else {
                 embed = new MessageEmbed().setDescription("Cannot delete messages");
@@ -43,19 +44,17 @@ export abstract class SharedMethods {
             server.queue.clear();
             var stream = fs.createReadStream('./src/assets/sounds/volfbot-disconnect.mp3');
             const sound = createAudioResource(stream);
-            const connection = await getVoiceConnection(server.guild.id);
+            const connection = getVoiceConnection(server.guild.id);
 
             if (connection) {
                 if (!server.audioPlayer.playable.includes(connection)) {
-                    await connection.subscribe(server.audioPlayer);
+                    connection.subscribe(server.audioPlayer);
                 }
 
-                await server.audioPlayer.on("stateChange", (oldState, newState) => {
-                    if (
-                        newState.status == AudioPlayerStatus.Idle
+                server.audioPlayer.on("stateChange", (oldState, newState) => {
+                    if (newState.status == AudioPlayerStatus.Idle
                         && connection.state.status !== VoiceConnectionStatus.Disconnected
-                        && connection.state.status !== VoiceConnectionStatus.Destroyed
-                    ) {
+                        && connection.state.status !== VoiceConnectionStatus.Destroyed) {
                         connection.disconnect();
                         connection.destroy();
                     }
@@ -75,11 +74,11 @@ export abstract class SharedMethods {
 
     public static async retrieveBotMessages(channel: TextBasedChannel, exclude: string[] = []): Promise<Array<Message>> {
         var messages = new Array<Message>();
-        await (await channel.messages.fetch({ limit: 100 }, { force: true })).forEach(msg => {
+        (await channel.messages.fetch({ limit: 100 }, { force: true })).forEach(msg => {
             var oldestMsg = new Date();
             oldestMsg.setDate(oldestMsg.getDate() - 13);
             if (msg.author.id == "698214544560095362" && !exclude.includes(msg.id) && msg.createdAt > oldestMsg) {
-                messages.push(msg)
+                messages.push(msg);
             }
         });
         return messages;
@@ -121,22 +120,31 @@ export abstract class SharedMethods {
         console.log(err);
     }
 
-    public static async searchYoutube(search: string): Promise<string> {
+    public static async searchYoutube(search: string, server: Server): Promise<string> {
         var opts: YouTubeSearchOptions = {
             maxResults: 1,
             key: process.env.GOOGLE_API,
         };
 
+        server.updateStatusMessage(await server.lastChannel.send({ embeds: [new MessageEmbed().setDescription(`Searching youtube for "${search}"`)] }));
+
         return new Promise<string>((resolve, reject) => {
             youtubeSearch(search, opts).then((res: { results: YouTubeSearchResults[], pageInfo: YouTubeSearchPageResults }) => {
                 const id: string = res.results[0].id;
                 resolve(id);
-            }).catch(err => reject(err));
+            }).catch(err => {
+                if (err.response.data.error.errors[0].reason == 'quotaExceeded') {
+                    const time = this.getQuotaResetTime();
+                    reject(new MessageEmbed().setTitle("Daily YouTube Search Limit Reached!").setDescription(`Limit will reset ${time.fromNow()}`));
+                } else {
+                    reject(err);
+                }
+            });
         });
     }
 
     public static async getMetadata(url: string, queuedBy: string, playlist: YouTubePlaylist): Promise<IMetadata> {
-        const meta = await new Metadata();
+        const meta = new Metadata();
 
         try {
             const raw = await ytdl.raw(url, {
@@ -210,7 +218,7 @@ export abstract class SharedMethods {
             meta.queuedBy = enqueuedBy;
 
             if (i == 0) {
-                video = await server.queue.enqueue(url, enqueuedBy, meta);;
+                video = await server.queue.enqueue(url, enqueuedBy, meta);
             } else {
                 server.queue.enqueue(url, enqueuedBy, meta);
             }
@@ -219,7 +227,7 @@ export abstract class SharedMethods {
         return video;
     }
 
-    public static async determineMediaType(url): Promise<[MediaType, string]> {
+    public static async determineMediaType(url: string, server?: Server): Promise<[MediaType, string]> {
         var mediaType: MediaType;
         return new Promise<[MediaType, string]>(async (resolve, reject) => {
             if (new RegExp(/watch\?v=/).test(url)) {
@@ -244,13 +252,26 @@ export abstract class SharedMethods {
             } else if (new RegExp(/list=/).test(url)) {
                 mediaType = MediaType.yt_playlist;
                 url = url.match(/(?:list=)([^&?]*)/)[1].toString();
-            } else {
+            } else if(server != undefined) {
                 mediaType = MediaType.yt_search;
-                url = "https://www.youtube.com/watch?v=" + await this.searchYoutube(url).catch(err => {
+                url = "https://www.youtube.com/watch?v=" + await this.searchYoutube(url, server).catch(err => {
                     return reject(err);
                 });
             }
             resolve([mediaType, url]);
         });
     }
+
+    public static getQuotaResetTime() {
+        var time = moment().hour(0).minute(0);
+        if (time.isDST()) {
+            time = time.add(1, 'day');
+            time = time.utcOffset(-480);
+        } else {
+            time = time.add(1, 'day');
+            time = time.utcOffset(-420);
+        }
+        return time;
+    }
+
 }

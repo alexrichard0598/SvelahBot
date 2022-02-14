@@ -1,12 +1,12 @@
 import { Discord, Slash } from "discordx";
-import { CommandInteraction, Message, MessageEmbed } from "discord.js";
+import { CommandInteraction, MessageEmbed } from "discord.js";
 import { log } from "../logging";
 import { SharedMethods } from "./sharedMethods";
 import * as fs from 'fs';
 import { KnownUser } from "../model/knownUser";
 
 @Discord()
-export abstract class hello_world {
+export abstract class HelloWorld {
   @Slash("hello", { description: "A hello world message" })
   async hello(interaction: CommandInteraction): Promise<void> {
     interaction.reply("Hello world!").catch((err) => {

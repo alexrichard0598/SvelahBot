@@ -30,7 +30,7 @@ export class Server {
           embed.description = "Now playing " + meta.title + " [" + meta.queuedBy + "]";
         } else {
           embed.description = "Reached end of queue, stoped playing";
-          await clearTimeout(this.timer);
+          clearTimeout(this.timer);
           this.timer = setTimeout(() => {
             if (!this.queue.hasMedia() && this.audioPlayer.state.status == AudioPlayerStatus.Idle) {
               SharedMethods.disconnectBot(this);
@@ -49,7 +49,7 @@ export class Server {
 
   async updateStatusMessage(msg) {
     if (this.messages.status != undefined) {
-      const status: Message = await this.messages.status.channel.messages.resolve(this.messages.status.id);
+      const status: Message = this.messages.status.channel.messages.resolve(this.messages.status.id);
       if (status != null) {
         if (status.deletable) status.delete();
       }
@@ -59,7 +59,7 @@ export class Server {
 
   async updateQueueMessage(msg) {
     if (this.messages.queue != undefined) {
-      const queue: Message = await this.messages.queue.channel.messages.resolve(this.messages.queue.id);
+      const queue: Message = this.messages.queue.channel.messages.resolve(this.messages.queue.id);
       if (queue != null) {
         if (queue.deletable) queue.delete();
       }
