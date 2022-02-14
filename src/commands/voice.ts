@@ -201,7 +201,7 @@ export abstract class voice {
       if (server.audioPlayer.state.status === AudioPlayerStatus.Idle) {
         interaction.editReply("Nothing is currently queued");
       } else {
-        server.queue.clear();
+        server.queue.clear(true);
         interaction.editReply("Queue cleared");
       }
     } catch (error) {
