@@ -1,17 +1,31 @@
 Currently the bot can only respond to these commands:
 
+  __TEXT CONTROLS__
+
   **/help:** gives this message here
   **/hello:** give a hello world message
   **/heya:** replies to the user
+  
+  __VOICE CONTROLS__
+
   **/join:** joins the connected vc of the user sending the commands
-  **/disconnect:** disconnect from the vc
-  **/dc:** an alias for disconnect
-  **/ping:** shows the ping for the currently connected voice channel
+  **/disconnect:** aka /dc, disconnect from the vc
   **/play:** plays audio, can handle full youtube links, video IDs, playlists, and will fallback on youtube search results
   **/pause:** pause playback
   **/resume:** resumes playback
-  **/queue:** displays currently playing queue
   **/stop:** stops playback and clears the queue
-  **/clear:** an alias for stop
   **/skip:** skip the song, if an index is provided skips to the selected index
+  **/np:** aka /now-playing, shows the progress of the currently playing song
+  **/queue:** displays currently playing queue in pages of 10
+  **/remove:** remove a song from the queue
+  **/clear:** removes all items from queue
+  **/loop:** loops the queue, until /end-looping is called
+  **/end-looping:** stops the queue looping
+  
+
+  __MISC OPTIONS__
+
+  **/ping:** shows the ping for the currently connected voice channel
   **/clearmessages:** clear all messages from the bot in the channel the command is run in
+  
+  

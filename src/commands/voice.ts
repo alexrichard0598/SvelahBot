@@ -169,7 +169,6 @@ export abstract class voice {
   }
 
   @Slash("stop", { description: "Stops playback and clears queue" })
-  @Slash("clear", { description: "Stops playback and clears queue" })
   async stop(interaction: CommandInteraction) {
     try {
       const server = await SharedMethods.getServer(interaction.guild);
@@ -189,6 +188,22 @@ export abstract class voice {
         queue.clear();
       }
 
+    } catch (error) {
+      SharedMethods.handleErr(error, interaction.guild);
+    }
+  }
+
+  @Slash("clear", { description: "Clears the queue" })
+  async clear(interaction: CommandInteraction) {
+    try {
+      const server = await SharedMethods.getServer(interaction.guild);
+      server.updateStatusMessage(await interaction.deferReply({ fetchReply: true })); // Bot is thinking
+      if (server.audioPlayer.state.status === AudioPlayerStatus.Idle) {
+        interaction.editReply("Nothing is currently queued");
+      } else {
+        server.queue.clear();
+        interaction.editReply("Queue cleared");
+      }
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);
     }
@@ -443,7 +458,7 @@ export abstract class voice {
       server.updateStatusMessage(await interaction.fetchReply());
 
       const index = parseInt(indexString);
-      if(!server.queue.hasMedia()) {
+      if (!server.queue.hasMedia()) {
         interaction.editReply({ embeds: [new MessageEmbed().setDescription(`No songs are currently queued`)] });
       } else if (isNaN(index)) {
         interaction.editReply({ embeds: [new MessageEmbed().setDescription(`Could not parse ${indexString}, please enter a whole number`)] });
