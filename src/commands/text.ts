@@ -47,14 +47,7 @@ export abstract class hello_world {
       const server = SharedMethods.getServer(interaction.guild);
       (await server).lastChannel = interaction.channel;
       const deleting = await interaction.fetchReply();
-      var messages = new Array<Message>();
-      await (await interaction.channel.messages.fetch({ limit: 100 }, { force: true })).forEach(msg => {
-        var oldestMsg = new Date();
-        oldestMsg.setDate(oldestMsg.getDate() - 13);
-        if (msg.author.id == "698214544560095362" && msg.id != deleting.id && msg.createdAt > oldestMsg) {
-          messages.push(msg)
-        }
-      });
+      const messages = await SharedMethods.retrieveBotMessages(interaction.channel, [deleting.id]);
 
       SharedMethods.ClearMessages(messages, interaction);
     } catch (error) {

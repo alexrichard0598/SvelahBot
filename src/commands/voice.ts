@@ -52,7 +52,7 @@ export abstract class voice {
       if (connection === null) {
         interaction.editReply("I'm not in any voice chats right now");
       } else {
-        SharedMethods.DisconnectBot(server);
+        SharedMethods.DisconnectBot(server, [(await interaction.fetchReply()).id]);
         interaction.editReply("Disconnected 👋");
       }
     } catch (error) {

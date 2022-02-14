@@ -27,12 +27,13 @@ export class MediaQueue {
   }
 
   async dequeue(index: number = 1) {
-    while (index > 0) {
-      const removedItem = this.queue.shift();
-      if (this.looping) {
-        this.queue.push(removedItem);
-      }
-      index--;
+    const removedItems = this.queue.slice(0, index-1);
+    const keptItems = this.queue.slice(index-1);
+    if (this.looping) {
+      removedItems.forEach(i => i.resource = undefined);
+      this.queue = keptItems.concat(removedItems);
+    } else {
+      this.queue = keptItems;
     }
   }
 

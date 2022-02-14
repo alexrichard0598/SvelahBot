@@ -1,6 +1,6 @@
 import path = require("path");
 import { AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection, StreamType, VoiceConnectionStatus } from "@discordjs/voice";
-import { CommandInteraction, Guild, Message, MessageEmbed, TextChannel } from "discord.js";
+import { CommandInteraction, Guild, Message, MessageEmbed, TextBasedChannel, TextChannel } from "discord.js";
 import { Server } from "../model/server";
 import * as fs from 'fs';
 import * as youtubeSearch from "youtube-search";
@@ -38,7 +38,7 @@ export abstract class SharedMethods {
         }
     }
 
-    public static async DisconnectBot(server: Server) {
+    public static async DisconnectBot(server: Server, excludedMessages: string[] = []) {
         try {
             server.queue.clear();
             var stream = fs.createReadStream('./src/assets/sounds/volfbot-disconnect.mp3');
@@ -50,15 +50,12 @@ export abstract class SharedMethods {
                     await connection.subscribe(server.audioPlayer);
                 }
 
-
-
                 await server.audioPlayer.on("stateChange", (oldState, newState) => {
                     if (
                         newState.status == AudioPlayerStatus.Idle
                         && connection.state.status !== VoiceConnectionStatus.Disconnected
                         && connection.state.status !== VoiceConnectionStatus.Destroyed
                     ) {
-
                         connection.disconnect();
                         connection.destroy();
                     }
@@ -67,19 +64,25 @@ export abstract class SharedMethods {
                 const deleting = await server.lastChannel.send("Cleaning up after disconnect");
                 server.audioPlayer.play(sound);
                 if (server.lastChannel) {
-                    var messages = new Array<Message>();
-                    await (await server.lastChannel.messages.fetch({ limit: 100 }, { force: true })).forEach(msg => {
-                        if (msg.author.id == "698214544560095362" && msg.id != deleting.id) {
-                            messages.push(msg)
-                        }
-                    });
-                    this.ClearMessages(messages);
+                    this.ClearMessages(await this.retrieveBotMessages(server.lastChannel, excludedMessages.concat(deleting.id)));
                 }
             }
         } catch (error) {
             this.handleErr(error, server.guild);
         }
 
+    }
+
+    public static async retrieveBotMessages(channel: TextBasedChannel, exclude: string[] = []): Promise<Array<Message>> {
+        var messages = new Array<Message>();
+        await (await channel.messages.fetch({ limit: 100 }, { force: true })).forEach(msg => {
+            var oldestMsg = new Date();
+            oldestMsg.setDate(oldestMsg.getDate() - 13);
+            if (msg.author.id == "698214544560095362" && !exclude.includes(msg.id) && msg.createdAt > oldestMsg) {
+                messages.push(msg)
+            }
+        });
+        return messages;
     }
 
     public static async getServer(guild: Guild) {
@@ -169,7 +172,7 @@ export abstract class SharedMethods {
                 quiet: true,
                 format: "bestaudio[ext=webm][acodec=opus][asr=48000]",
                 limitRate: "100k",
-                
+
             },
             { stdio: ["ignore", "pipe", "ignore"] }
         ).stdout;
