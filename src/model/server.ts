@@ -33,7 +33,7 @@ export class Server {
           await clearTimeout(this.timer);
           this.timer = setTimeout(() => {
             if (!this.queue.hasMedia() && this.audioPlayer.state.status == AudioPlayerStatus.Idle) {
-              SharedMethods.DisconnectBot(this);
+              SharedMethods.disconnectBot(this);
               this.lastChannel.send({ embeds: [new MessageEmbed().setDescription("Automatically disconnected due to 5 minutes of inactivity")] })
             } else {
               clearTimeout(this.timer);

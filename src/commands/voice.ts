@@ -52,7 +52,7 @@ export abstract class voice {
       if (connection === null) {
         interaction.editReply("I'm not in any voice chats right now");
       } else {
-        SharedMethods.DisconnectBot(server, [(await interaction.fetchReply()).id]);
+        SharedMethods.disconnectBot(server, [(await interaction.fetchReply()).id]);
         interaction.editReply("Disconnected 👋");
       }
     } catch (error) {
@@ -120,7 +120,7 @@ export abstract class voice {
       if (mediaType[0] == MediaType.yt_playlist) {
         media = await SharedMethods.createYoutubePlaylistResource(mediaType[1], interaction.user.username, server);
       } else {
-        media = await queue.enqueue(url, interaction.user.username);
+        media = await queue.enqueue(mediaType[1], interaction.user.username);
       }
 
       if (media == undefined) {
@@ -287,12 +287,12 @@ export abstract class voice {
 
         const parsedInt = parseInt(page);
         var pageInt = 1;
-        if(!isNaN(parsedInt) && (parsedInt - 1) * 10 < queuedSongs.length && parsedInt > 1) {
+        if (!isNaN(parsedInt) && (parsedInt - 1) * 10 < queuedSongs.length && parsedInt > 1) {
           pageInt = parsedInt;
         }
 
         if (queuedSongs.length > 9) {
-            title += ` — Page ${pageInt} of ${Math.ceil(queuedSongs.length / 10)}`
+          title += ` — Page ${pageInt} of ${Math.ceil(queuedSongs.length / 10)}`
         }
 
         for (let i = Math.max((pageInt - 1) * 10 - 1, 0); i < queuedSongs.length; i++) {
@@ -340,9 +340,16 @@ export abstract class voice {
       if (!queue.hasMedia()) {
         embed.description = "No songs to skip";
       } else if (!isNaN(i)) {
-        await queue.dequeue(i);
-        audioPlayer.stop();
-        embed.description = "Skipped " + (i - 1).toString() + " songs";
+        const queueLength = queue.getQueue().length;
+        if (queueLength < i) {
+          embed.description = `Only ${queueLength} songs in queue, cannot skip to song #${i} as no such song exists`;
+        } else if (i == 1) {
+          embed.description = `Song #1 is the currently playing song`;
+        } else {
+          await queue.dequeue(i-2);
+          audioPlayer.stop();
+          embed.description = "Skipped " + (i - 1).toString() + " songs";
+        }
       } else {
         audioPlayer.stop();
         embed.description = "Song skipped";
@@ -360,7 +367,7 @@ export abstract class voice {
       const server = await SharedMethods.getServer(interaction.guild);
       server.updateStatusMessage(await interaction.deferReply({ fetchReply: true })); // Bot is thinking
       server.queue.loopQueue();
-      interaction.editReply({ embeds: [new MessageEmbed().setDescription("Queue will loop until stoped")] });
+      interaction.editReply({ embeds: [new MessageEmbed().setDescription("Queue will loop until stoped\n(use /end-loop to stop looping)")] });
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);
     }
@@ -412,6 +419,18 @@ export abstract class voice {
     }
   }
 
+  @Slash("shuffle", { description: "Shuffle the current queue" })
+  async shuffle(interaction: CommandInteraction): Promise<void> {
+    try {
+      const server = await SharedMethods.getServer(interaction.guild);
+      server.updateStatusMessage(await interaction.deferReply({ fetchReply: true }));
+      server.queue.shuffle();
+      interaction.editReply({ embeds: [new MessageEmbed().setDescription("Queue shuffled")] });
+    } catch (error) {
+      SharedMethods.handleErr(error, interaction.guild);
+    }
+  }
+
   @On("voiceStateUpdate")
   async voiceStatusUpdate(voiceStates: [oldState: VoiceState, newState: VoiceState], client: Client) {
     const user = voiceStates[0].member.user;
@@ -421,7 +440,7 @@ export abstract class voice {
       const channel = voiceStates[0].channel;
       if (channel != null) {
         if (channel.members.filter(m => m.user.bot == false).size == 0) {
-          SharedMethods.DisconnectBot(server);
+          SharedMethods.disconnectBot(server);
         }
       }
     }

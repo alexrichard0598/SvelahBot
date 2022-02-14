@@ -49,7 +49,7 @@ export abstract class hello_world {
       const deleting = await interaction.fetchReply();
       const messages = await SharedMethods.retrieveBotMessages(interaction.channel, [deleting.id]);
 
-      SharedMethods.ClearMessages(messages, interaction);
+      SharedMethods.clearMessages(messages, interaction);
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);
     }

@@ -17,7 +17,7 @@ export abstract class SharedMethods {
     private static servers: Server[] = new Array<Server>();
 
 
-    public static async ClearMessages(messages: Array<Message>, interaction?: CommandInteraction) {
+    public static async clearMessages(messages: Array<Message>, interaction?: CommandInteraction) {
         let embed: MessageEmbed;
         const server = messages.length > 0 ? await this.getServer(messages[0].guild) : undefined;
         if (messages.length > 0) {
@@ -38,7 +38,7 @@ export abstract class SharedMethods {
         }
     }
 
-    public static async DisconnectBot(server: Server, excludedMessages: string[] = []) {
+    public static async disconnectBot(server: Server, excludedMessages: string[] = []) {
         try {
             server.queue.clear();
             var stream = fs.createReadStream('./src/assets/sounds/volfbot-disconnect.mp3');
@@ -64,7 +64,7 @@ export abstract class SharedMethods {
                 const deleting = await server.lastChannel.send("Cleaning up after disconnect");
                 server.audioPlayer.play(sound);
                 if (server.lastChannel) {
-                    this.ClearMessages(await this.retrieveBotMessages(server.lastChannel, excludedMessages.concat(deleting.id)));
+                    this.clearMessages(await this.retrieveBotMessages(server.lastChannel, excludedMessages.concat(deleting.id)));
                 }
             }
         } catch (error) {
@@ -139,10 +139,9 @@ export abstract class SharedMethods {
         const meta = await new Metadata();
 
         try {
-
             const raw = await ytdl.raw(url, {
                 dumpSingleJson: true,
-                simulate: true
+                simulate: true,
             });
 
             const details = JSON.parse(raw.stdout);
@@ -172,7 +171,6 @@ export abstract class SharedMethods {
                 quiet: true,
                 format: "bestaudio[ext=webm][acodec=opus][asr=48000]",
                 limitRate: "100k",
-
             },
             { stdio: ["ignore", "pipe", "ignore"] }
         ).stdout;
@@ -190,12 +188,6 @@ export abstract class SharedMethods {
         enqueuedBy: string,
         server: Server
     ): Promise<YouTubeVideo> {
-
-        // const result = JSON.parse(await youtubeDlWrap.execPromise([
-        //     playlistId, "-i",
-        //     "-q", "--no-warnings",
-        //     "--flat-playlist", "--dump-single-json",
-        // ]));
 
         const raw = await ytdl.raw(playlistId, {
             dumpSingleJson: true,
