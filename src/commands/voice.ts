@@ -346,7 +346,7 @@ export abstract class voice {
         } else if (i == 1) {
           embed.description = `Song #1 is the currently playing song`;
         } else {
-          await queue.dequeue(i-2);
+          await queue.dequeue(i - 2);
           audioPlayer.stop();
           embed.description = "Skipped " + (i - 1).toString() + " songs";
         }
@@ -431,6 +431,39 @@ export abstract class voice {
     }
   }
 
+  @Slash("remove", { description: "Remove an item at the index" })
+  async removeItem(
+    @SlashOption("index", { description: "The index of the song to remove" })
+    indexString: string,
+    interaction: CommandInteraction
+  ): Promise<void> {
+    try {
+      interaction.deferReply();
+      const server = await SharedMethods.getServer(interaction.guild);
+      server.updateStatusMessage(await interaction.fetchReply());
+
+      const index = parseInt(indexString);
+      if(!server.queue.hasMedia()) {
+        interaction.editReply({ embeds: [new MessageEmbed().setDescription(`No songs are currently queued`)] });
+      } else if (isNaN(index)) {
+        interaction.editReply({ embeds: [new MessageEmbed().setDescription(`Could not parse ${indexString}, please enter a whole number`)] });
+      } else if (index == 1) {
+        const song = server.queue.getItemAt(index - 1);
+        server.queue.removeItemAt(index - 1);
+        server.audioPlayer.stop();
+        interaction.editReply({ embeds: [new MessageEmbed().setDescription(`Currently playing song removed`)] });
+      } else if (index > server.queue.getQueue().length) {
+        interaction.editReply({ embeds: [new MessageEmbed().setDescription(`You entered a number larger than the number of queued songs`)] });
+      } else {
+        const song = server.queue.getItemAt(index - 1);
+        server.queue.removeItemAt(index - 1);
+        interaction.editReply({ embeds: [new MessageEmbed().setDescription(`${song.meta.title} at queue position ${index} removed`)] });
+      }
+    } catch (error) {
+      SharedMethods.handleErr(error, interaction.guild);
+    }
+  }
+
   @On("voiceStateUpdate")
   async voiceStatusUpdate(voiceStates: [oldState: VoiceState, newState: VoiceState], client: Client) {
     const user = voiceStates[0].member.user;
@@ -475,6 +508,4 @@ export abstract class voice {
       SharedMethods.handleErr(error, interaction.guild);
     }
   }
-
-
 }

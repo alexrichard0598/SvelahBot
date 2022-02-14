@@ -50,6 +50,10 @@ export class MediaQueue {
     return this.queue.find(v => v.id == id);
   }
 
+  getItemAt(index: number) {
+    return this.queue[index];
+  }
+
   hasMedia(): boolean {
     return this.queue.length != 0;
   }
@@ -88,5 +92,10 @@ export class MediaQueue {
     }
 
     this.queue = shuffledQueue;
+  }
+
+  removeItemAt(i: number) {
+    const newQueue = this.queue.slice(0, i).concat(this.queue.slice(i+1));
+    this.queue = newQueue;
   }
 }
