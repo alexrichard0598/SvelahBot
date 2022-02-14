@@ -1,7 +1,7 @@
 import path = require("path");
 import { AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection, VoiceConnectionStatus } from "@discordjs/voice";
 import { CommandInteraction, Guild, Message, MessageEmbed, TextBasedChannel, TextChannel } from "discord.js";
-import { Server } from "../model/server";
+import { DiscordServer } from "../model/discordServer";
 import * as fs from 'fs';
 import * as youtubeSearch from "youtube-search";
 import * as youtubeDL from "youtube-dl-exec"
@@ -9,13 +9,14 @@ const ytdl = youtubeDL.create(path.join(__dirname, "../ytdl/yt-dlp"));
 import { IMetadata, Metadata } from "../model/metadata";
 import { MediaQueue } from "../model/mediaQueue";
 import { MediaType } from "../model/mediaType";
+import { BotStatus } from "../model/botStatus";
 import { YouTubePlaylist, YouTubeVideo } from "../model/youtube";
 import { YouTubeSearchOptions, YouTubeSearchPageResults, YouTubeSearchResults } from "youtube-search";
 import moment = require("moment");
 
 
 export abstract class SharedMethods {
-    private static servers: Server[] = new Array<Server>();
+    private static servers: DiscordServer[] = new Array<DiscordServer>();
 
 
     public static async clearMessages(messages: Array<Message>, interaction?: CommandInteraction) {
@@ -39,7 +40,7 @@ export abstract class SharedMethods {
         }
     }
 
-    public static async disconnectBot(server: Server, excludedMessages: string[] = []) {
+    public static async disconnectBot(server: DiscordServer, excludedMessages: string[] = []) {
         try {
             server.queue.clear();
             var stream = fs.createReadStream('./src/assets/sounds/volfbot-disconnect.mp3');
@@ -88,7 +89,7 @@ export abstract class SharedMethods {
         try {
             const foundServer = this.servers.find((s) => s.guild.id == guild.id);
             if (foundServer === undefined) {
-                var newServer = new Server(guild);
+                var newServer = new DiscordServer(guild);
                 this.servers.push(newServer);
                 return newServer;
             }
@@ -120,7 +121,7 @@ export abstract class SharedMethods {
         console.log(err);
     }
 
-    public static async searchYoutube(search: string, server: Server): Promise<string> {
+    public static async searchYoutube(search: string, server: DiscordServer): Promise<string> {
         var opts: YouTubeSearchOptions = {
             maxResults: 1,
             key: process.env.GOOGLE_API,
@@ -194,7 +195,7 @@ export abstract class SharedMethods {
     public static async createYoutubePlaylistResource(
         playlistId: string,
         enqueuedBy: string,
-        server: Server
+        server: DiscordServer
     ): Promise<YouTubeVideo> {
 
         const raw = await ytdl.raw(playlistId, {
@@ -227,7 +228,7 @@ export abstract class SharedMethods {
         return video;
     }
 
-    public static async determineMediaType(url: string, server?: Server): Promise<[MediaType, string]> {
+    public static async determineMediaType(url: string, server?: DiscordServer): Promise<[MediaType, string]> {
         var mediaType: MediaType;
         return new Promise<[MediaType, string]>(async (resolve, reject) => {
             if (new RegExp(/watch\?v=/).test(url)) {
@@ -252,7 +253,7 @@ export abstract class SharedMethods {
             } else if (new RegExp(/list=/).test(url)) {
                 mediaType = MediaType.yt_playlist;
                 url = url.match(/(?:list=)([^&?]*)/)[1].toString();
-            } else if(server != undefined) {
+            } else if (server != undefined) {
                 mediaType = MediaType.yt_search;
                 url = "https://www.youtube.com/watch?v=" + await this.searchYoutube(url, server).catch(err => {
                     return reject(err);
@@ -274,4 +275,13 @@ export abstract class SharedMethods {
         return time;
     }
 
+    public static getStatus(server: DiscordServer): BotStatus {
+        if (server.audioPlayer.state.status == AudioPlayerStatus.Playing) {
+            return BotStatus.PlayingMusic;
+        } else if(getVoiceConnection(server.guild.id) !== undefined) {
+            return BotStatus.InVC;
+        } else {
+            return BotStatus.Idle;
+        }
+    }
 }

@@ -5,7 +5,7 @@ import { MediaQueue } from "./mediaQueue";
 import { Messages } from "./messages";
 import { IMetadata } from "./metadata";
 
-export class Server {
+export class DiscordServer {
   guild: Guild;
   queue: MediaQueue;
   audioPlayer: AudioPlayer;

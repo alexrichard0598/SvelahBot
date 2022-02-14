@@ -1,21 +1,16 @@
 {
     "compilerOptions": {
-      "module": "commonjs",
-      "target": "es2020",
-      "noImplicitAny": false,
-      "sourceMap": true,
-      "outDir": "build",
-      "emitDecoratorMetadata": true,
-      "experimentalDecorators": true,
-      "importHelpers": true,
-      "forceConsistentCasingInFileNames": true,
-      "lib": [
-        "es2020",
-        "esnext.asynciterable"
-      ],
-      "moduleResolution": "node"
+        "module": "commonjs",
+        "target": "es2020",
+        "noImplicitAny": false,
+        "sourceMap": true,
+        "outDir": "build",
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "importHelpers": true,
+        "forceConsistentCasingInFileNames": true,
+        "lib": ["es2020", "esnext.asynciterable"],
+        "moduleResolution": "node"
     },
-    "exclude": [
-      "node_modules"
-    ]
-  }
+    "exclude": ["node_modules"]
+}

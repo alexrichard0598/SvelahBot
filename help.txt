@@ -27,5 +27,5 @@ Currently the bot can only respond to these commands:
 
   **/ping:** shows the ping for the currently connected voice channel
   **/clearmessages:** clear all messages from the bot in the channel the command is run in
-  
+  **/status:** shows the current status of the bot
   
