@@ -27,7 +27,7 @@ export class DiscordServer {
           const currentItem = await this.queue.currentItem();
           this.audioPlayer.play(currentItem.resource);
           const meta = currentItem.meta as IMetadata;
-          embed.description = "Now playing " + meta.title + " [" + meta.queuedBy + "]";
+          embed.description = `Now playing [${meta.title}](${currentItem.url}) [${meta.queuedBy}]`;
         } else {
           embed.description = "Reached end of queue, stoped playing";
           clearTimeout(this.timer);

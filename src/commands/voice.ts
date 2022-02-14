@@ -475,8 +475,8 @@ export abstract class Voice {
   private async initCommand({ interaction, isStatusMessage: isStatusMessage, isQueueMessage: isQueueMessage }: InitCommandParams) {
     const reply = await interaction.deferReply({ fetchReply: true });
     const server = await SharedMethods.getServer(interaction.guild);
-    if (isStatusMessage) server.updateStatusMessage(reply);
-    if (isQueueMessage) server.updateQueueMessage(reply);
+    if (isStatusMessage) await server.updateStatusMessage(reply);
+    if (isQueueMessage) await server.updateQueueMessage(reply);
     server.lastChannel = interaction.channel;
     return server
   }
