@@ -18,7 +18,7 @@ Currently the bot can only respond to these commands:
   **/np:** aka /now-playing, shows the progress of the currently playing song
   **/queue:** displays currently playing queue in pages of 10
   **/remove:** remove a song from the queue
-  **/clear:** removes all items from queue
+  **/clear:** removes all items from queue, does not stop current song
   **/loop:** loops the queue, until /end-looping is called
   **/end-looping:** stops the queue looping
   
