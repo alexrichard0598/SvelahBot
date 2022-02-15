@@ -341,6 +341,7 @@ export abstract class Voice {
   }
 
   @Slash("end-looping", { description: "Loops the current queue until looping is stoped" })
+  @Slash("eloop", { description: "Loops the current queue until looping is stoped" })
   async EndLoop(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
