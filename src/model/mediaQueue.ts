@@ -26,7 +26,7 @@ export class MediaQueue {
     return video;
   }
 
-  async dequeue(index: number = 1) {
+  async dequeue(index: number = 1): Promise<void> {
     const removedItems = this.queue.slice(0, index);
     const keptItems = this.queue.slice(index);
     if (this.looping) {
@@ -37,7 +37,7 @@ export class MediaQueue {
     }
   }
 
-  clear(keepCurrentSong = false) {
+  clear(keepCurrentSong = false): void {
     if (keepCurrentSong) {
       this.queue.splice(1, this.queue.length);
     } else {
@@ -50,12 +50,18 @@ export class MediaQueue {
     return this.queue;
   }
 
-  getItem(id: string) {
+  async getItem(id: string): Promise<YouTubeVideo> {
     return this.queue.find(v => v.id == id);
   }
 
-  getItemAt(index: number) {
+  getItemAt(index: number): YouTubeVideo {
     return this.queue[index];
+  }
+
+  async getTotalLength(): Promise<number> {
+    var length = 0;
+    this.queue.forEach(v => length += v.meta.length);
+    return length;
   }
 
   hasMedia(): boolean {
@@ -77,15 +83,15 @@ export class MediaQueue {
     return this.queue[0];
   }
 
-  loopQueue() {
+  loopQueue(): void {
     this.looping = true;
   }
 
-  endLoop() {
+  endLoop(): void {
     this.looping = false;
   }
 
-  shuffle() {
+  shuffle(): void {
     var copyQueue = this.queue.slice(1);
     var shuffledQueue = new Array<YouTubeVideo>();
     shuffledQueue.push(this.queue[0]);
@@ -98,7 +104,7 @@ export class MediaQueue {
     this.queue = shuffledQueue;
   }
 
-  removeItemAt(i: number) {
+  removeItemAt(i: number): void {
     const newQueue = this.queue.slice(0, i).concat(this.queue.slice(i + 1));
     this.queue = newQueue;
   }

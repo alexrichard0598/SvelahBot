@@ -51,7 +51,7 @@ export class DiscordServer {
     if (this.messages.status != undefined) {
       const status: Message = this.messages.status.channel.messages.resolve(this.messages.status.id);
       if (status != null) {
-        if (status.deletable) status.delete();
+        if (status.deletable) status.delete().catch(err => { SharedMethods.handleErr(err, this.guild) });
       }
     }
     if (msg instanceof Message) this.messages.status = msg;
@@ -61,7 +61,7 @@ export class DiscordServer {
     if (this.messages.queue != undefined) {
       const queue: Message = this.messages.queue.channel.messages.resolve(this.messages.queue.id);
       if (queue != null) {
-        if (queue.deletable) queue.delete();
+        if (queue.deletable) queue.delete().catch(err => { SharedMethods.handleErr(err, this.guild) });
       }
     }
     if (msg instanceof Message) this.messages.queue = msg;

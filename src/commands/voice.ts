@@ -16,6 +16,8 @@ import { SharedMethods } from "./sharedMethods";
 import { MediaType } from "../model/mediaType";
 import { YouTubeVideo } from "../model/youtube";
 import moment = require("moment");
+import momentDurationFormatSetup = require("moment-duration-format");
+momentDurationFormatSetup(moment);
 import { BotStatus } from "../model/botStatus";
 
 
@@ -97,7 +99,7 @@ export abstract class Voice {
       }
 
       var mediaStatus = this.checkMediaStatus(media, mediaType[0] == MediaType.yt_playlist, interaction.user.username);
-      server.updateQueueMessage(await server.lastChannel.send({ embeds: [mediaStatus[1]] }));
+      server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1]] }));
       if (mediaStatus[0]) return;
 
       if (!audioPlayer.playable.includes(connection)) {
@@ -115,10 +117,8 @@ export abstract class Voice {
         const meta = media.meta;
         embed.title = "Now Playing";
         embed.description = `[${meta.title}](${media.url}) [${meta.queuedBy}]`;
-        server.updateStatusMessage(await interaction.fetchReply());
+        server.lastChannel.send({ embeds: [embed] });
       }
-
-      interaction.editReply({ embeds: [embed] });
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);
     }
@@ -261,6 +261,12 @@ export abstract class Voice {
 
         if (queuedSongs.length > 9) {
           title += ` — Page ${pageInt} of ${Math.ceil(queuedSongs.length / 10)}`
+          const queueLength = await queue.getTotalLength();
+          var length = moment.duration(queueLength, "ms");
+          title += ` — Total Duration: ${moment.duration(queueLength, "ms").format("d [days], h [hours], m [minutes], s [seconds]")}`;
+        } else if (queuedSongs.length > 1) {
+          const queueLength = await queue.getTotalLength();
+          title += ` — Total Duration: ${moment.duration(queueLength, "ms").format("d [days], h [hours], m [minutes], s [seconds]")}`;
         }
 
         for (let i = Math.max((pageInt - 1) * 10 - 1, 0); i < queuedSongs.length; i++) {
@@ -496,7 +502,7 @@ export abstract class Voice {
       mediaError = true;
     } else if (isPlaylist) {
       embed.title = "Playlist Queued"
-      embed.description = `[${media.meta.playlist.name}](https://www.youtube.com/playlist?list=${media.url}) [${username}]`;
+      embed.description = `[${media.meta.playlist}](https://www.youtube.com/playlist?list=${media.url}) [${username}]`;
     } else {
       const meta = media.meta as IMetadata;
       embed.title = "Song Queued"
