@@ -1,5 +1,5 @@
 import path = require("path");
-import { AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection, VoiceConnectionStatus } from "@discordjs/voice";
+import { AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection, StreamType, VoiceConnectionStatus } from "@discordjs/voice";
 import { CommandInteraction, Guild, Message, MessageEmbed, TextBasedChannel, TextChannel } from "discord.js";
 import { DiscordServer } from "../model/discordServer";
 import * as fs from 'fs';
@@ -46,8 +46,8 @@ export abstract class SharedMethods {
     public static async disconnectBot(server: DiscordServer, excludedMessages: string[] = []) {
         try {
             server.queue.clear();
-            var stream = fs.createReadStream('./src/assets/sounds/volfbot-disconnect.mp3');
-            const sound = createAudioResource(stream);
+            var stream = fs.createReadStream('./src/assets/sounds/volfbot-disconnect.ogg');
+            const sound = createAudioResource(stream, { inputType: StreamType.OggOpus });
             const connection = getVoiceConnection(server.guild.id);
 
             if (connection) {
