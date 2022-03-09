@@ -10,9 +10,12 @@ import { IMetadata, Metadata } from "../model/metadata";
 import { MediaQueue } from "../model/mediaQueue";
 import { MediaType } from "../model/mediaType";
 import { BotStatus } from "../model/botStatus";
-import { YouTubePlaylist, YouTubeVideo } from "../model/youtube";
+import { YouTubePlaylist, PlayableResource } from "../model/youtube";
 import { YouTubeSearchOptions, YouTubeSearchPageResults, YouTubeSearchResults } from "youtube-search";
 import moment = require("moment");
+import { SpotifyWebApi } from "spotify-web-api-ts";
+var spotifyUri = require("spotify-uri");
+const spotify = new SpotifyWebApi({ clientSecret: process.env.SPOTIFY_SECRET, clientId: process.env.SPOTIFY_ID, accessToken: process.env.SPOTIFY_OAUTH });
 
 
 export abstract class SharedMethods {
@@ -134,6 +137,7 @@ export abstract class SharedMethods {
                 const id: string = res.results[0].id;
                 resolve(id);
             }).catch(err => {
+                if (err) console.log(err);
                 if (err.response.data.error.errors[0].reason == 'quotaExceeded') {
                     const time = this.getQuotaResetTime();
                     reject(new MessageEmbed().setTitle("Daily YouTube Search Limit Reached!").setDescription(`Limit will reset ${time.fromNow()}`));
@@ -196,7 +200,7 @@ export abstract class SharedMethods {
         playlistId: string,
         enqueuedBy: string,
         server: DiscordServer
-    ): Promise<YouTubeVideo> {
+    ): Promise<PlayableResource> {
 
         const raw = await ytdl.raw(playlistId, {
             dumpSingleJson: true,
@@ -206,7 +210,7 @@ export abstract class SharedMethods {
 
         const result = JSON.parse(raw.stdout);
 
-        var video: YouTubeVideo;
+        var video: PlayableResource;
 
         for (let i = 0; i < result.entries.length; i++) {
             const vid = result.entries[i];
@@ -226,6 +230,10 @@ export abstract class SharedMethods {
         }
 
         return video;
+    }
+
+    public static async createSpotifyResource(uri: string, enqueuedBy: string, server: DiscordServer): Promise<PlayableResource> {
+        throw new Error("Method not implemented.");
     }
 
     public static async determineMediaType(url: string, server?: DiscordServer): Promise<[MediaType, string]> {
@@ -253,11 +261,25 @@ export abstract class SharedMethods {
             } else if (new RegExp(/list=/).test(url)) {
                 mediaType = MediaType.yt_playlist;
                 url = url.match(/(?:list=)([^&?]*)/)[1].toString();
+            } else if (new RegExp(/spotify/).test(url)) {
+                url = spotifyUri.formatURI(spotifyUri.parse(url));
+                switch (url.split(":")[1]) {
+                    case "track":
+                        mediaType = MediaType.spotify_track;
+                        break;
+                    case "playlist":
+                        mediaType = MediaType.spotify_playlist;
+                        break;
+                    default:
+                        mediaType = MediaType.unknown;
+                        break;
+                }
             } else if (server != undefined) {
                 mediaType = MediaType.yt_search;
-                url = "https://www.youtube.com/watch?v=" + await this.searchYoutube(url, server).catch(err => {
+                var id = await this.searchYoutube(url, server).catch(err => {
                     return reject(err);
                 });
+                url = "https://www.youtube.com/watch?v=" + id;
             }
             resolve([mediaType, url]);
         });
@@ -278,7 +300,7 @@ export abstract class SharedMethods {
     public static getStatus(server: DiscordServer): BotStatus {
         if (server.audioPlayer.state.status == AudioPlayerStatus.Playing) {
             return BotStatus.PlayingMusic;
-        } else if(getVoiceConnection(server.guild.id) !== undefined) {
+        } else if (getVoiceConnection(server.guild.id) !== undefined) {
             return BotStatus.InVC;
         } else {
             return BotStatus.Idle;

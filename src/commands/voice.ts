@@ -14,11 +14,12 @@ import {
 import { IMetadata, Metadata } from "../model/metadata";
 import { SharedMethods } from "./sharedMethods";
 import { MediaType } from "../model/mediaType";
-import { YouTubeVideo } from "../model/youtube";
+import { PlayableResource } from "../model/youtube";
 import moment = require("moment");
 import momentDurationFormatSetup = require("moment-duration-format");
 momentDurationFormatSetup(moment);
 import { BotStatus } from "../model/botStatus";
+import { DiscordServer } from "../model/discordServer";
 
 
 @Discord()
@@ -88,19 +89,25 @@ export abstract class Voice {
         }
       });
 
-      if (mediaType == undefined) return;
-
-      var media: YouTubeVideo;
+      var media: PlayableResource;
 
       if (mediaType[0] == MediaType.yt_playlist) {
         media = await SharedMethods.createYoutubePlaylistResource(mediaType[1], interaction.user.username, server);
-      } else {
+        //} else if (mediaType[0] == MediaType.spotify_track) {
+        //media = await SharedMethods.createSpotifyResource(mediaType[1], interaction.user.username, server);
+      } else if (mediaType[0] == MediaType.yt_video || mediaType[0] == MediaType.yt_search) {
         media = await queue.enqueue(mediaType[1], interaction.user.username);
+      } else {
+        return;
       }
 
-      var mediaStatus = this.checkMediaStatus(media, mediaType[0] == MediaType.yt_playlist, interaction.user.username);
-      server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1]] }));
-      if (mediaStatus[0]) return;
+      var mediaStatus = this.checkMediaStatus(media, mediaType[0] == MediaType.yt_playlist, interaction.user.username, server);
+      if (mediaStatus[0]) {
+        server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1]] }));
+        return;
+      } else {
+        server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1].setTitle(mediaStatus[1].title + ` — ${server.queue.getQueue().length} Songs in Queue`)] }));
+      }
 
       if (!audioPlayer.playable.includes(connection)) {
         connection.subscribe(audioPlayer);
@@ -262,7 +269,6 @@ export abstract class Voice {
         if (queuedSongs.length > 9) {
           title += ` — Page ${pageInt} of ${Math.ceil(queuedSongs.length / 10)}`
           const queueLength = await queue.getTotalLength();
-          var length = moment.duration(queueLength, "ms");
           title += ` — Total Duration: ${moment.duration(queueLength, "ms").format("d [days], h [hours], m [minutes], s [seconds]")}`;
         } else if (queuedSongs.length > 1) {
           const queueLength = await queue.getTotalLength();
@@ -365,7 +371,7 @@ export abstract class Voice {
     try {
       const server = await this.initCommand({ interaction: interaction, isQueueMessage: true });
 
-      const nowPlaying: YouTubeVideo = await server.queue.currentItem();
+      const nowPlaying: PlayableResource = await server.queue.currentItem();
       if (!server.queue.hasMedia()) {
         interaction.editReply({ embeds: [new MessageEmbed().setDescription("No songs are currently queued")] })
       } else if (nowPlaying.meta instanceof Metadata) {
@@ -398,8 +404,12 @@ export abstract class Voice {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true, isQueueMessage: true });
 
-      server.queue.shuffle();
-      interaction.editReply({ embeds: [new MessageEmbed().setDescription("Queue shuffled")] });
+      if (await server.queue.getTotalLength() == 0) {
+        interaction.editReply({ embeds: [new MessageEmbed().setDescription("Queue is empty")] });
+      } else {
+        server.queue.shuffle();
+        interaction.editReply({ embeds: [new MessageEmbed().setDescription("Queue shuffled")] });
+      }
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);
     }
@@ -488,7 +498,7 @@ export abstract class Voice {
     return server
   }
 
-  private checkMediaStatus(media: YouTubeVideo, isPlaylist: boolean, username: string): [boolean, MessageEmbed] {
+  private checkMediaStatus(media: PlayableResource, isPlaylist: boolean, username: string, server: DiscordServer): [boolean, MessageEmbed] {
     var embed = new MessageEmbed();
     var mediaError = false;
 
@@ -505,7 +515,7 @@ export abstract class Voice {
       embed.description = `[${media.meta.playlist}](https://www.youtube.com/playlist?list=${media.url}) [${username}]`;
     } else {
       const meta = media.meta as IMetadata;
-      embed.title = "Song Queued"
+      embed.title = 'Song Queued';
       embed.description = `[${meta.title}](${media.url}) [${meta.queuedBy}]`;
     }
 

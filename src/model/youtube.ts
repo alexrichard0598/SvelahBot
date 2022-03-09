@@ -1,7 +1,7 @@
 import { AudioResource } from "@discordjs/voice";
 import { Metadata } from "./metadata";
 
-export class YouTubeVideo {
+export class PlayableResource {
     url: string;
     meta: Metadata;
     resource: AudioResource;
