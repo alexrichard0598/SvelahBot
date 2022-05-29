@@ -171,7 +171,7 @@ export abstract class Voice {
     }
   }
 
-  @Slash("resume", { description: "Plays music" })
+  @Slash("resume", { description: "Resumes playback" })
   async resume(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
@@ -352,8 +352,8 @@ export abstract class Voice {
     }
   }
 
-  @Slash("end-looping", { description: "Loops the current queue until looping is stoped" })
-  @Slash("eloop", { description: "Loops the current queue until looping is stoped" })
+  @Slash("end-looping", { description: "Stops looping the current queue" })
+  @Slash("eloop", { description: "Stops looping the current queue" })
   async EndLoop(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
@@ -365,8 +365,8 @@ export abstract class Voice {
     }
   }
 
-  @Slash("now-playing", { description: "Loops the current queue until looping is stoped" })
-  @Slash("np", { description: "Loops the current queue until looping is stoped" })
+  @Slash("now-playing", { description: "Shows the currently playing song and who queued it" })
+  @Slash("np", { description: "Shows the currently playing song and who queued it" })
   async nowPlaying(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await this.initCommand({ interaction: interaction, isQueueMessage: true });
