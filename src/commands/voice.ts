@@ -2,6 +2,7 @@ import { Client, Discord, On, Slash, SlashOption } from "discordx";
 import {
   CommandInteraction,
   MessageEmbed,
+  Options,
   VoiceBasedChannel,
   VoiceState,
 } from "discord.js";
@@ -476,15 +477,14 @@ export abstract class Voice {
 
   @On("voiceStateUpdate")
   async voiceStatusUpdate(voiceStates: [oldState: VoiceState, newState: VoiceState], client: Client) {
-    const user = voiceStates[0].member.user;
+    const botUserId = "698214544560095362";
     const server = await SharedMethods.getServer(voiceStates[0].guild);
+    const bot = await server.guild.members.fetch(botUserId);
+    const channel = bot.voice.channel;
 
-    if (user.id != "698214544560095362") {
-      const channel = voiceStates[0].channel;
-      if (channel != null) {
-        if (channel.members.filter(m => !m.user.bot).size == 0) {
-          SharedMethods.disconnectBot(server);
-        }
+    if (channel != null) {
+      if (channel.members.filter(m => !m.user.bot).size == 0) {
+        SharedMethods.disconnectBot(server);
       }
     }
   }
