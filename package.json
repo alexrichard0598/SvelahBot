@@ -8,7 +8,7 @@
     "url": "https://github.com/alexrichard0598/Volfbot"
   },
   "dependencies": {
-    "@discordjs/opus": "^0.6.0",
+    "@discordjs/opus": "^0.8.0",
     "@discordjs/voice": "^0.6.0",
     "@types/moment-duration-format": "^2.2.3",
     "@types/node": "^16.9.2",
