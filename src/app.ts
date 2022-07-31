@@ -5,7 +5,7 @@ import * as Path from "path";
 import { resolve } from "path/posix";
 import { log } from "./logging";
 
-var client: Client;
+let client: Client;
 
 async function start() {
   try {

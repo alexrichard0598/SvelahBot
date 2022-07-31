@@ -15,7 +15,7 @@ export abstract class Help {
       ? fs.readFileSync(helpfile, "utf-8")
       : "Help me!";
 
-    var embed = new MessageEmbed();
+    let embed = new MessageEmbed();
 
     embed.setTitle("Help Text").setDescription(helptext);
 

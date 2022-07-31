@@ -17,7 +17,7 @@ export class DiscordServer {
     this.guild = guild;
     this.queue = new MediaQueue();
     this.audioPlayer = new AudioPlayer();
-    this.audioPlayer.on("stateChange", async (oldState, newState) => {
+    this.audioPlayer.on("stateChange", async (_oldState, newState) => {
       if (
         newState.status === AudioPlayerStatus.Idle
       ) {

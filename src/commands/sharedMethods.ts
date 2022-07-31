@@ -14,7 +14,7 @@ import { YouTubePlaylist, PlayableResource } from "../model/youtube";
 import { YouTubeSearchOptions, YouTubeSearchPageResults, YouTubeSearchResults } from "youtube-search";
 import moment = require("moment");
 import { SpotifyWebApi } from "spotify-web-api-ts";
-var spotifyUri = require("spotify-uri");
+let spotifyUri = require("spotify-uri");
 const spotify = new SpotifyWebApi({ clientSecret: process.env.SPOTIFY_SECRET, clientId: process.env.SPOTIFY_ID, accessToken: process.env.SPOTIFY_OAUTH });
 
 
@@ -46,7 +46,7 @@ export abstract class SharedMethods {
     public static async disconnectBot(server: DiscordServer, excludedMessages: string[] = []) {
         try {
             server.queue.clear();
-            var stream = fs.createReadStream('./src/assets/sounds/volfbot-disconnect.ogg');
+            let stream = fs.createReadStream('./src/assets/sounds/volfbot-disconnect.ogg');
             const sound = createAudioResource(stream, { inputType: StreamType.OggOpus });
             const connection = getVoiceConnection(server.guild.id);
 
@@ -55,7 +55,7 @@ export abstract class SharedMethods {
                     connection.subscribe(server.audioPlayer);
                 }
 
-                server.audioPlayer.on("stateChange", (oldState, newState) => {
+                server.audioPlayer.on("stateChange", (_oldState, newState) => {
                     if (newState.status == AudioPlayerStatus.Idle
                         && connection.state.status !== VoiceConnectionStatus.Disconnected
                         && connection.state.status !== VoiceConnectionStatus.Destroyed) {
@@ -77,9 +77,9 @@ export abstract class SharedMethods {
     }
 
     public static async retrieveBotMessages(channel: TextBasedChannel, exclude: string[] = []): Promise<Array<Message>> {
-        var messages = new Array<Message>();
+        let messages = new Array<Message>();
         (await channel.messages.fetch({ limit: 100 }, { force: true })).forEach(msg => {
-            var oldestMsg = new Date();
+            let oldestMsg = new Date();
             oldestMsg.setDate(oldestMsg.getDate() - 13);
             if (msg.author.id == "698214544560095362" && !exclude.includes(msg.id) && msg.createdAt > oldestMsg) {
                 messages.push(msg);
@@ -92,7 +92,7 @@ export abstract class SharedMethods {
         try {
             const foundServer = this.servers.find((s) => s.guild.id == guild.id);
             if (foundServer === undefined) {
-                var newServer = new DiscordServer(guild);
+                let newServer = new DiscordServer(guild);
                 this.servers.push(newServer);
                 return newServer;
             }
@@ -125,7 +125,7 @@ export abstract class SharedMethods {
     }
 
     public static async searchYoutube(search: string, server: DiscordServer): Promise<string> {
-        var opts: YouTubeSearchOptions = {
+        let opts: YouTubeSearchOptions = {
             maxResults: 1,
             key: process.env.GOOGLE_API,
         };
@@ -175,7 +175,7 @@ export abstract class SharedMethods {
 
     public static async createYoutubeResource(
         url: string,
-        queuedBy: string
+        _queuedBy: string
     ): Promise<AudioResource<unknown>> {
         const ytStream = ytdl.raw(
             url,
@@ -188,7 +188,7 @@ export abstract class SharedMethods {
             { stdio: ["ignore", "pipe", "ignore"] }
         ).stdout;
 
-        var audioResource: AudioResource;
+        let audioResource: AudioResource;
 
         const { stream, type } = await demuxProbe(ytStream);
         audioResource = createAudioResource(stream, { inputType: type });
@@ -210,7 +210,7 @@ export abstract class SharedMethods {
 
         const result = JSON.parse(raw.stdout);
 
-        var video: PlayableResource;
+        let video: PlayableResource;
 
         for (let i = 0; i < result.entries.length; i++) {
             const vid = result.entries[i];
@@ -232,12 +232,12 @@ export abstract class SharedMethods {
         return video;
     }
 
-    public static async createSpotifyResource(uri: string, enqueuedBy: string, server: DiscordServer): Promise<PlayableResource> {
+    public static async createSpotifyResource(_uri: string, _enqueuedBy: string, _server: DiscordServer): Promise<PlayableResource> {
         throw new Error("Method not implemented.");
     }
 
     public static async determineMediaType(url: string, server?: DiscordServer): Promise<[MediaType, string]> {
-        var mediaType: MediaType;
+        let mediaType: MediaType;
         return new Promise<[MediaType, string]>(async (resolve, reject) => {
             if (new RegExp(/watch\?v=/).test(url)) {
                 mediaType = MediaType.yt_video;
@@ -276,7 +276,7 @@ export abstract class SharedMethods {
                 }
             } else if (server != undefined) {
                 mediaType = MediaType.yt_search;
-                var id = await this.searchYoutube(url, server).catch(err => {
+                let id = await this.searchYoutube(url, server).catch(err => {
                     return reject(err);
                 });
                 url = "https://www.youtube.com/watch?v=" + id;
@@ -286,7 +286,7 @@ export abstract class SharedMethods {
     }
 
     public static getQuotaResetTime() {
-        var time = moment().hour(0).minute(0);
+        let time = moment().hour(0).minute(0);
         if (time.isDST()) {
             time = time.add(1, 'day');
             time = time.utcOffset(-480);

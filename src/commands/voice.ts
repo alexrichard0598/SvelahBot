@@ -2,7 +2,6 @@ import { Client, Discord, On, Slash, SlashOption } from "discordx";
 import {
   CommandInteraction,
   MessageEmbed,
-  Options,
   VoiceBasedChannel,
   VoiceState,
 } from "discord.js";
@@ -74,7 +73,7 @@ export abstract class Voice {
       const embed = new MessageEmbed(); // create message embed
       const queue = server.queue; // get the server's queue
       const audioPlayer = server.audioPlayer; // get the server's audioPlayer
-      var connection = getVoiceConnection(interaction.guildId); // get the current voice connection
+      let connection = getVoiceConnection(interaction.guildId); // get the current voice connection
 
       /* if the voice connection is undefined create a voice connection */
       if (connection === undefined) {
@@ -83,26 +82,20 @@ export abstract class Voice {
       }
 
       const mediaType = await SharedMethods.determineMediaType(url, server).catch(err => {
-        if (err instanceof MessageEmbed) {
-          interaction.editReply({ embeds: [err] });
-        } else {
-          throw err;
-        }
+        this.handleDetermineMediaTypeError(err, interaction);
       });
 
-      var media: PlayableResource;
+      let media: PlayableResource;
 
       if (mediaType[0] == MediaType.yt_playlist) {
         media = await SharedMethods.createYoutubePlaylistResource(mediaType[1], interaction.user.username, server);
-        //} else if (mediaType[0] == MediaType.spotify_track) {
-        //media = await SharedMethods.createSpotifyResource(mediaType[1], interaction.user.username, server);
       } else if (mediaType[0] == MediaType.yt_video || mediaType[0] == MediaType.yt_search) {
         media = await queue.enqueue(mediaType[1], interaction.user.username);
       } else {
         return;
       }
 
-      var mediaStatus = this.checkMediaStatus(media, mediaType[0] == MediaType.yt_playlist, interaction.user.username, server);
+      let mediaStatus = this.checkMediaStatus(media, mediaType[0] == MediaType.yt_playlist, interaction.user.username, server);
       if (mediaStatus[0]) {
         server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1]] }));
         return;
@@ -137,7 +130,7 @@ export abstract class Voice {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
 
-      var connection = getVoiceConnection(interaction.guildId);
+      let connection = getVoiceConnection(interaction.guildId);
       const queue = server.queue;
       const audioPlayer = server.audioPlayer;
 
@@ -251,18 +244,18 @@ export abstract class Voice {
       server.lastChannel = interaction.channel;
 
       const embed = new MessageEmbed();
-      var title =
+      let title =
         audioPlayer.state.status == AudioPlayerStatus.Playing
           ? "Now Playing"
           : "Current Queue";
 
-      var description = "";
+      let description = "";
 
       if (queue.hasMedia()) {
         const queuedSongs = queue.getQueue();
 
         const parsedInt = parseInt(page);
-        var pageInt = 1;
+        let pageInt = 1;
         if (!isNaN(parsedInt) && (parsedInt - 1) * 10 < queuedSongs.length && parsedInt > 1) {
           pageInt = parsedInt;
         }
@@ -313,7 +306,7 @@ export abstract class Voice {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true, isQueueMessage: true });
 
       const queue = server.queue;
-      var i = parseInt(skip);
+      let i = parseInt(skip);
       const embed = new MessageEmbed();
       const audioPlayer = server.audioPlayer;
 
@@ -452,7 +445,7 @@ export abstract class Voice {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
       const status = SharedMethods.getStatus(server);
       const vc: VoiceBasedChannel = (await server.guild.members.fetch("698214544560095362")).voice.channel;
-      var msg = "";
+      let msg = "";
 
       switch (status) {
         case BotStatus.Idle:
@@ -476,7 +469,7 @@ export abstract class Voice {
   }
 
   @On("voiceStateUpdate")
-  async voiceStatusUpdate(voiceStates: [oldState: VoiceState, newState: VoiceState], client: Client) {
+  async voiceStatusUpdate(voiceStates: [oldState: VoiceState, newState: VoiceState], _client: Client) {
     const botUserId = "698214544560095362";
     const server = await SharedMethods.getServer(voiceStates[0].guild);
     const bot = await server.guild.members.fetch(botUserId);
@@ -498,9 +491,9 @@ export abstract class Voice {
     return server
   }
 
-  private checkMediaStatus(media: PlayableResource, isPlaylist: boolean, username: string, server: DiscordServer): [boolean, MessageEmbed] {
-    var embed = new MessageEmbed();
-    var mediaError = false;
+  private checkMediaStatus(media: PlayableResource, isPlaylist: boolean, username: string, _server: DiscordServer): [boolean, MessageEmbed] {
+    let embed = new MessageEmbed();
+    let mediaError = false;
 
     if (media == undefined) {
       embed.title = "Unknown Error"
@@ -549,6 +542,14 @@ export abstract class Voice {
       return embed;
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);
+    }
+  }
+
+  private async handleDetermineMediaTypeError(err, interaction) {
+    if (err instanceof MessageEmbed) {
+      interaction.editReply({ embeds: [err] });
+    } else {
+      throw err;
     }
   }
 }

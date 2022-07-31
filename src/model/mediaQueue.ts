@@ -59,7 +59,7 @@ export class MediaQueue {
   }
 
   async getTotalLength(): Promise<number> {
-    var length = 0;
+    let length = 0;
     this.queue.forEach(v => length += v.meta.length);
     return length;
   }
@@ -92,8 +92,8 @@ export class MediaQueue {
   }
 
   shuffle(): void {
-    var copyQueue = this.queue.slice(1);
-    var shuffledQueue = new Array<PlayableResource>();
+    let copyQueue = this.queue.slice(1);
+    let shuffledQueue = new Array<PlayableResource>();
     shuffledQueue.push(this.queue[0]);
     while (copyQueue.length > 0) {
       const j = Math.floor(Math.random() * (copyQueue.length))

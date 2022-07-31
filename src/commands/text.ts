@@ -26,11 +26,10 @@ export abstract class HelloWorld {
       const knownUser = knownUsers.find(u => u.userId == interaction.user.id);
 
       if (knownUser != undefined) {
-        var msg = new MessageEmbed();
-        msg.addField(
-          "🤖User Recognized🤖",
-          `${knownUser.message}`
-        );
+        let msg = new MessageEmbed();
+        let info = Object.create({name: "🤖User Recognized🤖", value: `${knownUser.message}`});
+
+        msg.addFields(info);
         interaction.followUp({ embeds: [msg] }).catch((err) => {
           log.error(err);
         });
