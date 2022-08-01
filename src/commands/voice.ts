@@ -125,6 +125,76 @@ export abstract class Voice {
     }
   }
 
+  @Slash("playnow", { description: "Adds item to start of the queue and starts playing it now" })
+  async playnow(
+    @SlashOption("media", { description: "The media to play", required: true })
+    url: string,
+    interaction: CommandInteraction
+  ) {
+    try {
+      const server = await this.initCommand({ interaction: interaction });
+
+      const embed = new MessageEmbed(); // create message embed
+      const queue = server.queue; // get the server's queue
+      const audioPlayer = server.audioPlayer; // get the server's audioPlayer
+      const startQueueLength = await queue.getTotalLength();
+      let connection = getVoiceConnection(interaction.guildId); // get the current voice connection
+
+      queue.loopQueue();
+
+      /* if the voice connection is undefined create a voice connection */
+      if (connection === undefined) {
+        server.updateStatusMessage(server.lastChannel.send({ embeds: [await this.joinVC(interaction)] }));
+        connection = getVoiceConnection(interaction.guildId);
+      }
+
+      const mediaType = await SharedMethods.determineMediaType(url, server).catch(err => {
+        this.handleDetermineMediaTypeError(err, interaction);
+      });
+
+      let media: PlayableResource;
+
+      if (mediaType[0] == MediaType.yt_playlist) {
+        media = await SharedMethods.createYoutubePlaylistResource(mediaType[1], interaction.user.username, server);
+      } else if (mediaType[0] == MediaType.yt_video || mediaType[0] == MediaType.yt_search) {
+        media = await queue.enqueue(mediaType[1], interaction.user.username);
+      } else {
+        return;
+      }
+
+      let mediaStatus = this.checkMediaStatus(media, mediaType[0] == MediaType.yt_playlist, interaction.user.username, server);
+      if (mediaStatus[0]) {
+        server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1]] }));
+        return;
+      } else {
+        server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1].setTitle(mediaStatus[1].title + ` — ${server.queue.getQueue().length} Songs in Queue`)] }));
+      }
+
+      if (!audioPlayer.playable.includes(connection)) {
+        connection.subscribe(audioPlayer);
+      }
+
+      if (audioPlayer.state.status !== AudioPlayerStatus.Playing) {
+        media = await queue.currentItem();
+        while (media.resource.ended) {
+          await queue.dequeue();
+          media = await queue.currentItem()
+        }
+
+        audioPlayer.play(media.resource);
+        const meta = media.meta;
+        embed.title = "Now Playing";
+        embed.description = `[${meta.title}](${media.url}) [${meta.queuedBy}]`;
+        server.lastChannel.send({ embeds: [embed] });
+      } else {
+        await queue.dequeue(startQueueLength);
+        await audioPlayer.stop();
+      }
+    } catch (error) {
+      SharedMethods.handleErr(error, interaction.guild);
+    }
+  }
+
   @Slash("stop", { description: "Stops playback and clears queue" })
   async stop(interaction: CommandInteraction) {
     try {
