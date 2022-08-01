@@ -239,7 +239,10 @@ export abstract class SharedMethods {
     public static async determineMediaType(url: string, server?: DiscordServer): Promise<[MediaType, string]> {
         let mediaType: MediaType;
         return new Promise<[MediaType, string]>(async (resolve, reject) => {
-            if (new RegExp(/watch\?v=/).test(url)) {
+            if (new RegExp(/list=/).test(url)) {
+                mediaType = MediaType.yt_playlist;
+                url = url.match(/(?:list=)([^&?]*)/)[1].toString();
+            } else if (new RegExp(/watch\?v=/).test(url)) {
                 mediaType = MediaType.yt_video;
                 url =
                     "https://www.youtube.com/watch?v=" +
@@ -258,9 +261,6 @@ export abstract class SharedMethods {
             } else if (new RegExp(/^[A-Za-z0-9-_]{11}$/).test(url)) {
                 mediaType = MediaType.yt_video;
                 url = "https://www.youtube.com/watch?v=" + url;
-            } else if (new RegExp(/list=/).test(url)) {
-                mediaType = MediaType.yt_playlist;
-                url = url.match(/(?:list=)([^&?]*)/)[1].toString();
             } else if (new RegExp(/spotify/).test(url)) {
                 url = spotifyUri.formatURI(spotifyUri.parse(url));
                 switch (url.split(":")[1]) {
