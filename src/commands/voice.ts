@@ -7,9 +7,13 @@ import {
 } from "discord.js";
 import {
   AudioPlayerStatus,
+  createAudioResource,
   DiscordGatewayAdapterCreator,
+  entersState,
   getVoiceConnection,
   joinVoiceChannel,
+  StreamType,
+  VoiceConnectionStatus,
 } from "@discordjs/voice";
 import { IMetadata, Metadata } from "../model/metadata";
 import { SharedMethods } from "./sharedMethods";
@@ -20,7 +24,7 @@ import momentDurationFormatSetup = require("moment-duration-format");
 momentDurationFormatSetup(moment);
 import { BotStatus } from "../model/botStatus";
 import { DiscordServer } from "../model/discordServer";
-
+import * as fs from 'fs';
 
 @Discord()
 export abstract class Voice {
@@ -140,8 +144,6 @@ export abstract class Voice {
       const startQueueLength = await queue.getTotalLength();
       let connection = getVoiceConnection(interaction.guildId); // get the current voice connection
 
-      queue.loopQueue();
-
       /* if the voice connection is undefined create a voice connection */
       if (connection === undefined) {
         server.updateStatusMessage(server.lastChannel.send({ embeds: [await this.joinVC(interaction)] }));
@@ -187,8 +189,12 @@ export abstract class Voice {
         embed.description = `[${meta.title}](${media.url}) [${meta.queuedBy}]`;
         server.lastChannel.send({ embeds: [embed] });
       } else {
+        queue.loopQueue();
         await queue.dequeue(startQueueLength);
         await audioPlayer.stop();
+        audioPlayer.once("stateChange", async (_oldState, newState) => {
+          queue.endLoop();
+        });
       }
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);
@@ -558,7 +564,7 @@ export abstract class Voice {
     if (isStatusMessage) await server.updateStatusMessage(reply);
     if (isQueueMessage) await server.updateQueueMessage(reply);
     server.lastChannel = interaction.channel;
-    return server
+    return server;
   }
 
   private checkMediaStatus(media: PlayableResource, isPlaylist: boolean, username: string, _server: DiscordServer): [boolean, MessageEmbed] {
@@ -599,6 +605,8 @@ export abstract class Voice {
       );
       const embed = new MessageEmbed;
       const vc = guildMember.voice.channel;
+      const audioPlayer = server.audioPlayer;
+
       if (vc === null) {
         embed.description = "You are not part of a voice chat, please join a voice chat first.";
       } else {
@@ -606,9 +614,13 @@ export abstract class Voice {
           channelId: vc.id,
           guildId: vc.guildId,
           adapterCreator: vc.guild.voiceAdapterCreator as unknown as DiscordGatewayAdapterCreator,
-        });
+        }).subscribe(audioPlayer);
         embed.description = "Joined " + vc.name;
-      }
+      }     
+
+      let stream = fs.createReadStream('./src/assets/sounds/volfbot-connect.ogg');
+      const sound = createAudioResource(stream);
+      server.audioPlayer.play(sound);
       return embed;
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);

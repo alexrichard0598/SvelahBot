@@ -49,6 +49,10 @@ export class MediaQueue {
   getQueue(): Array<PlayableResource> {
     return this.queue;
   }
+  
+  setQueue(newQueue: Array<PlayableResource>): void {
+    this.queue = newQueue;
+  }
 
   async getItem(id: string): Promise<PlayableResource> {
     return this.queue.find(v => v.id == id);

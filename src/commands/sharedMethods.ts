@@ -47,7 +47,7 @@ export abstract class SharedMethods {
         try {
             server.queue.clear();
             let stream = fs.createReadStream('./src/assets/sounds/volfbot-disconnect.ogg');
-            const sound = createAudioResource(stream, { inputType: StreamType.OggOpus });
+            const sound = createAudioResource(stream);
             const connection = getVoiceConnection(server.guild.id);
 
             if (connection) {
