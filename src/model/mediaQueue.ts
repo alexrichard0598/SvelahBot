@@ -47,7 +47,7 @@ export class MediaQueue {
   }
 
   getQueue(): Array<PlayableResource> {
-    return this.queue;
+    return Array.from(this.queue);
   }
   
   setQueue(newQueue: Array<PlayableResource>): void {

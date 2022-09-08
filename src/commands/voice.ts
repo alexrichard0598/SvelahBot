@@ -7,13 +7,7 @@ import {
 } from "discord.js";
 import {
   AudioPlayerStatus,
-  createAudioResource,
-  DiscordGatewayAdapterCreator,
-  entersState,
   getVoiceConnection,
-  joinVoiceChannel,
-  StreamType,
-  VoiceConnectionStatus,
 } from "@discordjs/voice";
 import { IMetadata, Metadata } from "../model/metadata";
 import { SharedMethods } from "./sharedMethods";
@@ -24,7 +18,6 @@ import momentDurationFormatSetup = require("moment-duration-format");
 momentDurationFormatSetup(moment);
 import { BotStatus } from "../model/botStatus";
 import { DiscordServer } from "../model/discordServer";
-import * as fs from 'fs';
 
 @Discord()
 export abstract class Voice {
@@ -35,7 +28,7 @@ export abstract class Voice {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
 
-      interaction.editReply({ embeds: [await this.joinVC(interaction)] }); // Join the vc
+      interaction.editReply({ embeds: [await server.connectBot(interaction)] }); // Join the vc
       server.lastChannel = interaction.channel; // set the last replied channel
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);
@@ -57,7 +50,7 @@ export abstract class Voice {
       if (connection === null) {
         interaction.editReply("I'm not in any voice chats right now");
       } else {
-        SharedMethods.disconnectBot(server, [(await interaction.fetchReply()).id]);
+        server.disconnectBot([(await interaction.fetchReply()).id]);
         interaction.editReply("Disconnected 👋");
       }
     } catch (error) {
@@ -81,38 +74,21 @@ export abstract class Voice {
 
       /* if the voice connection is undefined create a voice connection */
       if (connection === undefined) {
-        server.updateStatusMessage(server.lastChannel.send({ embeds: [await this.joinVC(interaction)] }));
+        server.updateStatusMessage(server.lastChannel.send({ embeds: [await server.connectBot(interaction)] }));
         connection = getVoiceConnection(interaction.guildId);
       }
 
-      const mediaType = await SharedMethods.determineMediaType(url, server).catch(err => {
-        this.handleDetermineMediaTypeError(err, interaction);
-      });
-
-      let media: PlayableResource;
-
-      if (mediaType[0] == MediaType.yt_playlist) {
-        media = await SharedMethods.createYoutubePlaylistResource(mediaType[1], interaction.user.username, server);
-      } else if (mediaType[0] == MediaType.yt_video || mediaType[0] == MediaType.yt_search) {
-        media = await queue.enqueue(mediaType[1], interaction.user.username);
-      } else {
+      if (await this.dealWithMedia(interaction, url, server) === null) {
         return;
       }
 
-      let mediaStatus = this.checkMediaStatus(media, mediaType[0] == MediaType.yt_playlist, interaction.user.username, server);
-      if (mediaStatus[0]) {
-        server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1]] }));
-        return;
-      } else {
-        server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1].setTitle(mediaStatus[1].title + ` — ${server.queue.getQueue().length} Songs in Queue`)] }));
-      }
 
       if (!audioPlayer.playable.includes(connection)) {
         connection.subscribe(audioPlayer);
       }
 
-      if (audioPlayer.state.status !== AudioPlayerStatus.Playing) {
-        media = await queue.currentItem();
+      if (audioPlayer.state.status === AudioPlayerStatus.Idle) {
+        let media = await queue.currentItem();
         while (media.resource.ended) {
           await queue.dequeue();
           media = await queue.currentItem()
@@ -137,64 +113,48 @@ export abstract class Voice {
   ) {
     try {
       const server = await this.initCommand({ interaction: interaction });
-
-      const embed = new MessageEmbed(); // create message embed
       const queue = server.queue; // get the server's queue
+
+      if (!queue.hasMedia()) {
+        return this.play(url, interaction);
+      }
+      
       const audioPlayer = server.audioPlayer; // get the server's audioPlayer
-      const startQueueLength = await queue.getTotalLength();
       let connection = getVoiceConnection(interaction.guildId); // get the current voice connection
 
       /* if the voice connection is undefined create a voice connection */
       if (connection === undefined) {
-        server.updateStatusMessage(server.lastChannel.send({ embeds: [await this.joinVC(interaction)] }));
+        server.updateStatusMessage(server.lastChannel.send({ embeds: [await server.connectBot(interaction)] }));
         connection = getVoiceConnection(interaction.guildId);
       }
 
-      const mediaType = await SharedMethods.determineMediaType(url, server).catch(err => {
-        this.handleDetermineMediaTypeError(err, interaction);
-      });
+      let media = await this.dealWithMedia(interaction, url, server, false);
 
-      let media: PlayableResource;
-
-      if (mediaType[0] == MediaType.yt_playlist) {
-        media = await SharedMethods.createYoutubePlaylistResource(mediaType[1], interaction.user.username, server);
-      } else if (mediaType[0] == MediaType.yt_video || mediaType[0] == MediaType.yt_search) {
-        media = await queue.enqueue(mediaType[1], interaction.user.username);
-      } else {
+      if (media === null) {
         return;
-      }
-
-      let mediaStatus = this.checkMediaStatus(media, mediaType[0] == MediaType.yt_playlist, interaction.user.username, server);
-      if (mediaStatus[0]) {
-        server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1]] }));
-        return;
-      } else {
-        server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1].setTitle(mediaStatus[1].title + ` — ${server.queue.getQueue().length} Songs in Queue`)] }));
       }
 
       if (!audioPlayer.playable.includes(connection)) {
         connection.subscribe(audioPlayer);
       }
 
-      if (audioPlayer.state.status !== AudioPlayerStatus.Playing) {
-        media = await queue.currentItem();
-        while (media.resource.ended) {
-          await queue.dequeue();
-          media = await queue.currentItem()
-        }
+      let currentQueue = queue.getQueue();
+      let newQueue;
 
-        audioPlayer.play(media.resource);
-        const meta = media.meta;
-        embed.title = "Now Playing";
-        embed.description = `[${meta.title}](${media.url}) [${meta.queuedBy}]`;
-        server.lastChannel.send({ embeds: [embed] });
+      if (media instanceof PlayableResource) {
+        let tempQueue = new Array<PlayableResource>();
+        tempQueue.push(media);
+        newQueue = tempQueue.concat(currentQueue);
+      } else if (media instanceof Array<PlayableResource>) {
+        newQueue = media.concat(currentQueue);
       } else {
-        queue.loopQueue();
-        await queue.dequeue(startQueueLength);
-        await audioPlayer.stop();
-        audioPlayer.once("stateChange", async (_oldState, newState) => {
-          queue.endLoop();
-        });
+        return;
+      }
+
+      queue.setQueue(newQueue);
+      let currentItem = await queue.currentItem();
+      if (currentItem !== undefined) {
+        audioPlayer.play(currentItem.resource);
       }
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);
@@ -553,18 +513,22 @@ export abstract class Voice {
 
     if (channel != null) {
       if (channel.members.filter(m => !m.user.bot).size == 0) {
-        SharedMethods.disconnectBot(server);
+        server.disconnectBot();
       }
     }
   }
 
-  private async initCommand({ interaction, isStatusMessage: isStatusMessage, isQueueMessage: isQueueMessage }: InitCommandParams) {
-    const reply = await interaction.deferReply({ fetchReply: true });
-    const server = await SharedMethods.getServer(interaction.guild);
-    if (isStatusMessage) await server.updateStatusMessage(reply);
-    if (isQueueMessage) await server.updateQueueMessage(reply);
-    server.lastChannel = interaction.channel;
-    return server;
+  private async initCommand({ interaction, isStatusMessage: isStatusMessage, isQueueMessage: isQueueMessage }: InitCommandParams): Promise<DiscordServer> {
+    if (!interaction.deferred) {
+      const reply = await interaction.deferReply({ fetchReply: true });
+      const server = await SharedMethods.getServer(interaction.guild);
+      if (isStatusMessage) await server.updateStatusMessage(reply);
+      if (isQueueMessage) await server.updateQueueMessage(reply);
+      server.lastChannel = interaction.channel;
+      return server;
+    } else {
+      return SharedMethods.getServer(interaction.guild);
+    }
   }
 
   private checkMediaStatus(media: PlayableResource, isPlaylist: boolean, username: string, _server: DiscordServer): [boolean, MessageEmbed] {
@@ -581,7 +545,7 @@ export abstract class Voice {
       mediaError = true;
     } else if (isPlaylist) {
       embed.title = "Playlist Queued"
-      embed.description = `[${media.meta.playlist}](https://www.youtube.com/playlist?list=${media.url}) [${username}]`;
+      embed.description = `[${media.meta.playlist.name}](https://www.youtube.com/playlist?list=${media.url}) [${username}]`;
     } else {
       const meta = media.meta as IMetadata;
       embed.title = 'Song Queued';
@@ -591,40 +555,67 @@ export abstract class Voice {
     return [mediaError, embed];
   }
 
-  /**
-   * 
-   * @param interaction the discord interaction
-   * @returns "Joined " + voiceChannelName
-   */
-  private async joinVC(interaction: CommandInteraction): Promise<MessageEmbed> {
-    try {
-      const server = await SharedMethods.getServer(interaction.guild);
-      server.lastChannel = interaction.channel;
-      const guildMember = await interaction.guild.members.fetch(
-        interaction.user
-      );
-      const embed = new MessageEmbed;
-      const vc = guildMember.voice.channel;
-      const audioPlayer = server.audioPlayer;
+  private async dealWithMedia(interaction: CommandInteraction, url: string, server: DiscordServer, queue = true): Promise<Array<PlayableResource> | PlayableResource | null> {
+    const mediaType = await SharedMethods.determineMediaType(url, server).catch(err => {
+      this.handleDetermineMediaTypeError(err, interaction);
+    });
 
-      if (vc === null) {
-        embed.description = "You are not part of a voice chat, please join a voice chat first.";
+    let media: PlayableResource | Array<PlayableResource>;
+
+    if (mediaType[0] == MediaType.yt_playlist) {
+      let videos: Array<PlayableResource> = await SharedMethods.createYoutubePlaylistResource(mediaType[1], interaction.user.username, server);
+
+      if (queue) {
+        videos.forEach((video: PlayableResource) => {
+          server.queue.enqueue(video.url, video.meta.queuedBy, video.meta);
+        });
+
+        media = videos[0];
       } else {
-        joinVoiceChannel({
-          channelId: vc.id,
-          guildId: vc.guildId,
-          adapterCreator: vc.guild.voiceAdapterCreator as unknown as DiscordGatewayAdapterCreator,
-        }).subscribe(audioPlayer);
-        embed.description = "Joined " + vc.name;
-      }     
-
-      let stream = fs.createReadStream('./src/assets/sounds/volfbot-connect.ogg');
-      const sound = createAudioResource(stream);
-      server.audioPlayer.play(sound);
-      return embed;
-    } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+        media = videos;
+      }
+    } else if (mediaType[0] == MediaType.yt_video || mediaType[0] == MediaType.yt_search) {
+      if (queue) {
+        media = await server.queue.enqueue(mediaType[1], interaction.user.username);
+      } else {
+        media = new PlayableResource(mediaType[1]);
+      }
+    } else {
+      media = null;
     }
+
+    let videoToTest;
+
+    if (media instanceof Array<PlayableResource>) {
+      const vid: PlayableResource = media[0];
+      vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.username, mediaType[1]);
+      videoToTest = vid;
+    } else if (media instanceof PlayableResource) {
+      if (media.meta.title === '') {
+        media.meta = await SharedMethods.getMetadata(media.url, interaction.user.username, mediaType[1]);
+      }
+      videoToTest = media;
+    } else {
+      videoToTest = media;
+    }
+
+    let mediaStatus = this.checkMediaStatus(videoToTest, mediaType[0] == MediaType.yt_playlist, interaction.user.username, server);
+    if (mediaStatus[0]) {
+      server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1]] }));
+      return;
+    } else {
+      let extraLength: number = 0;
+      if (!queue) {
+        if (media instanceof Array<PlayableResource>) {
+          extraLength = media.length;
+        } else if (media instanceof PlayableResource) {
+          extraLength = 1;
+        }
+      }
+      server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1].setTitle(mediaStatus[1].title + ` — ${server.queue.getQueue().length + extraLength} Songs in Queue`)] }));
+    }
+
+    return media;
   }
 
   private async handleDetermineMediaTypeError(err, interaction) {

@@ -21,7 +21,6 @@ const spotify = new SpotifyWebApi({ clientSecret: process.env.SPOTIFY_SECRET, cl
 export abstract class SharedMethods {
     private static servers: DiscordServer[] = new Array<DiscordServer>();
 
-
     public static async clearMessages(messages: Array<Message>, interaction?: CommandInteraction) {
         let embed: MessageEmbed;
         const server = messages.length > 0 ? await this.getServer(messages[0].guild) : undefined;
@@ -41,39 +40,6 @@ export abstract class SharedMethods {
         } else if (server) {
             server.lastChannel.send({ embeds: [embed] });
         }
-    }
-
-    public static async disconnectBot(server: DiscordServer, excludedMessages: string[] = []) {
-        try {
-            server.queue.clear();
-            let stream = fs.createReadStream('./src/assets/sounds/volfbot-disconnect.ogg');
-            const sound = createAudioResource(stream);
-            const connection = getVoiceConnection(server.guild.id);
-
-            if (connection) {
-                if (!server.audioPlayer.playable.includes(connection)) {
-                    connection.subscribe(server.audioPlayer);
-                }
-
-                server.audioPlayer.on("stateChange", (_oldState, newState) => {
-                    if (newState.status == AudioPlayerStatus.Idle
-                        && connection.state.status !== VoiceConnectionStatus.Disconnected
-                        && connection.state.status !== VoiceConnectionStatus.Destroyed) {
-                        connection.disconnect();
-                        connection.destroy();
-                    }
-                })
-
-                const deleting = await server.lastChannel.send("Cleaning up after disconnect");
-                server.audioPlayer.play(sound);
-                if (server.lastChannel) {
-                    this.clearMessages(await this.retrieveBotMessages(server.lastChannel, excludedMessages.concat(deleting.id)));
-                }
-            }
-        } catch (error) {
-            this.handleErr(error, server.guild);
-        }
-
     }
 
     public static async retrieveBotMessages(channel: TextBasedChannel, exclude: string[] = []): Promise<Array<Message>> {
@@ -200,7 +166,7 @@ export abstract class SharedMethods {
         playlistId: string,
         enqueuedBy: string,
         server: DiscordServer
-    ): Promise<PlayableResource> {
+    ): Promise<Array<PlayableResource>> {
 
         const raw = await ytdl.raw(playlistId, {
             dumpSingleJson: true,
@@ -210,26 +176,21 @@ export abstract class SharedMethods {
 
         const result = JSON.parse(raw.stdout);
 
-        let video: PlayableResource;
+        let playlist = new Array<PlayableResource>();
 
-        for (let i = 0; i < result.entries.length; i++) {
-            const vid = result.entries[i];
+        for (const vid of result.entries) {
             const url = vid.url;
             const title = result.title;
             const meta = new Metadata();
             meta.title = vid.title;
             meta.length = vid.duration * 1000;
-            meta.playlist = title;
+            meta.playlist = new YouTubePlaylist(title, result.entries.length) ;
             meta.queuedBy = enqueuedBy;
 
-            if (i == 0) {
-                video = await server.queue.enqueue(url, enqueuedBy, meta);
-            } else {
-                server.queue.enqueue(url, enqueuedBy, meta);
-            }
+            playlist.push(new PlayableResource(url, meta));
         }
 
-        return video;
+        return playlist;
     }
 
     public static async createSpotifyResource(_uri: string, _enqueuedBy: string, _server: DiscordServer): Promise<PlayableResource> {
@@ -238,11 +199,9 @@ export abstract class SharedMethods {
 
     public static async determineMediaType(url: string, server?: DiscordServer): Promise<[MediaType, string]> {
         let mediaType: MediaType;
+
         return new Promise<[MediaType, string]>(async (resolve, reject) => {
-            if (new RegExp(/list=/).test(url)) {
-                mediaType = MediaType.yt_playlist;
-                url = url.match(/(?:list=)([^&?]*)/)[1].toString();
-            } else if (new RegExp(/watch\?v=/).test(url)) {
+            if (new RegExp(/watch\?v=/).test(url)) {
                 mediaType = MediaType.yt_video;
                 url =
                     "https://www.youtube.com/watch?v=" +
@@ -250,6 +209,9 @@ export abstract class SharedMethods {
                         .match(/(?:v=)([^&?]*)/)
                         .toString()
                         .slice(2, 13);
+            } else if (new RegExp(/list=/).test(url)) {
+                mediaType = MediaType.yt_playlist;
+                url = url.match(/(?:list=)([^&?]*)/)[1].toString();
             } else if (new RegExp(/youtu.be/).test(url)) {
                 mediaType = MediaType.yt_video;
                 url =
@@ -261,6 +223,9 @@ export abstract class SharedMethods {
             } else if (new RegExp(/^[A-Za-z0-9-_]{11}$/).test(url)) {
                 mediaType = MediaType.yt_video;
                 url = "https://www.youtube.com/watch?v=" + url;
+            } else if (new RegExp(/^[A-Za-z0-9-_]{34}$/).test(url)) {
+                mediaType = MediaType.yt_playlist;
+                url = "https://www.youtube.com/playlist?list=" + url;
             } else if (new RegExp(/spotify/).test(url)) {
                 url = spotifyUri.formatURI(spotifyUri.parse(url));
                 switch (url.split(":")[1]) {
