@@ -118,7 +118,7 @@ export abstract class Voice {
       if (!queue.hasMedia()) {
         return this.play(url, interaction);
       }
-      
+
       const audioPlayer = server.audioPlayer; // get the server's audioPlayer
       let connection = getVoiceConnection(interaction.guildId); // get the current voice connection
 
@@ -531,7 +531,7 @@ export abstract class Voice {
     }
   }
 
-  private checkMediaStatus(media: PlayableResource, isPlaylist: boolean, username: string, _server: DiscordServer): [boolean, MessageEmbed] {
+  private checkMediaStatus(media: PlayableResource, isPlaylist: boolean, username: string): [boolean, MessageEmbed] {
     let embed = new MessageEmbed();
     let mediaError = false;
 
@@ -560,58 +560,49 @@ export abstract class Voice {
       this.handleDetermineMediaTypeError(err, interaction);
     });
 
-    let media: PlayableResource | Array<PlayableResource>;
+    let media: Array<PlayableResource>;
 
     if (mediaType[0] == MediaType.yt_playlist) {
-      let videos: Array<PlayableResource> = await SharedMethods.createYoutubePlaylistResource(mediaType[1], interaction.user.username, server);
-
-      if (queue) {
-        videos.forEach((video: PlayableResource) => {
-          server.queue.enqueue(video.url, video.meta.queuedBy, video.meta);
-        });
-
-        media = videos[0];
-      } else {
-        media = videos;
-      }
+      media = await SharedMethods.createYoutubePlaylistResource(mediaType[1], interaction.user.username, server);
     } else if (mediaType[0] == MediaType.yt_video || mediaType[0] == MediaType.yt_search) {
-      if (queue) {
-        media = await server.queue.enqueue(mediaType[1], interaction.user.username);
-      } else {
-        media = new PlayableResource(mediaType[1]);
-      }
+      media.push(new PlayableResource(mediaType[1]));
     } else {
       media = null;
     }
 
-    let videoToTest;
+    let videoToTest: PlayableResource;
 
     if (media instanceof Array<PlayableResource>) {
       const vid: PlayableResource = media[0];
-      vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.username, mediaType[1]);
-      videoToTest = vid;
-    } else if (media instanceof PlayableResource) {
-      if (media.meta.title === '') {
-        media.meta = await SharedMethods.getMetadata(media.url, interaction.user.username, mediaType[1]);
+
+      if (vid.meta.title === '') {
+        vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.username, mediaType[1]);
       }
-      videoToTest = media;
-    } else {
-      videoToTest = media;
+
+      videoToTest = vid;
     }
 
-    let mediaStatus = this.checkMediaStatus(videoToTest, mediaType[0] == MediaType.yt_playlist, interaction.user.username, server);
+    if (media instanceof Array<PlayableResource> && queue) {
+      media.forEach((video: PlayableResource) => {
+        server.queue.enqueue(video.url, video.meta.queuedBy, video.meta);
+      });
+    }
+
+    let mediaStatus = this.checkMediaStatus(videoToTest, mediaType[0] == MediaType.yt_playlist, interaction.user.username);
+
     if (mediaStatus[0]) {
       server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1]] }));
       return;
     } else {
+
       let extraLength: number = 0;
+      
       if (!queue) {
         if (media instanceof Array<PlayableResource>) {
           extraLength = media.length;
-        } else if (media instanceof PlayableResource) {
-          extraLength = 1;
         }
       }
+
       server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1].setTitle(mediaStatus[1].title + ` — ${server.queue.getQueue().length + extraLength} Songs in Queue`)] }));
     }
 

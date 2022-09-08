@@ -1,8 +1,7 @@
 import path = require("path");
-import { AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection, StreamType, VoiceConnectionStatus } from "@discordjs/voice";
+import { AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection } from "@discordjs/voice";
 import { CommandInteraction, Guild, Message, MessageEmbed, TextBasedChannel, TextChannel } from "discord.js";
 import { DiscordServer } from "../model/discordServer";
-import * as fs from 'fs';
 import * as youtubeSearch from "youtube-search";
 import * as youtubeDL from "youtube-dl-exec"
 const ytdl = youtubeDL.create(path.join(__dirname, "../ytdl/yt-dlp"));
@@ -13,9 +12,7 @@ import { BotStatus } from "../model/botStatus";
 import { YouTubePlaylist, PlayableResource } from "../model/youtube";
 import { YouTubeSearchOptions, YouTubeSearchPageResults, YouTubeSearchResults } from "youtube-search";
 import moment = require("moment");
-import { SpotifyWebApi } from "spotify-web-api-ts";
 let spotifyUri = require("spotify-uri");
-const spotify = new SpotifyWebApi({ clientSecret: process.env.SPOTIFY_SECRET, clientId: process.env.SPOTIFY_ID, accessToken: process.env.SPOTIFY_OAUTH });
 
 
 export abstract class SharedMethods {
