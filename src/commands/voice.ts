@@ -565,28 +565,24 @@ export abstract class Voice {
     if (mediaType[0] == MediaType.yt_playlist) {
       media = await SharedMethods.createYoutubePlaylistResource(mediaType[1], interaction.user.username, server);
     } else if (mediaType[0] == MediaType.yt_video || mediaType[0] == MediaType.yt_search) {
+      media = new Array<PlayableResource>();
       media.push(new PlayableResource(mediaType[1]));
-    } else {
-      media = null;
     }
 
-    let videoToTest: PlayableResource;
-
-    if (media instanceof Array<PlayableResource>) {
-      const vid: PlayableResource = media[0];
-
-      if (vid.meta.title === '') {
-        vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.username, mediaType[1]);
-      }
-
-      videoToTest = vid;
-    }
-
-    if (media instanceof Array<PlayableResource> && queue) {
+    if (media !== undefined && queue) {
       media.forEach((video: PlayableResource) => {
         server.queue.enqueue(video.url, video.meta.queuedBy, video.meta);
       });
     }
+
+    let videoToTest: PlayableResource;
+    const vid: PlayableResource = media[0];
+
+    if (vid.meta.title === '') {
+      vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.username, mediaType[1]);
+    }
+
+    videoToTest = vid;
 
     let mediaStatus = this.checkMediaStatus(videoToTest, mediaType[0] == MediaType.yt_playlist, interaction.user.username);
 
@@ -596,7 +592,7 @@ export abstract class Voice {
     } else {
 
       let extraLength: number = 0;
-      
+
       if (!queue) {
         if (media instanceof Array<PlayableResource>) {
           extraLength = media.length;
