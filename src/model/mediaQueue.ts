@@ -18,7 +18,7 @@ export class MediaQueue {
     hash.update(`${this.queue.length}${url}${Date.now()}`);
     const id = hash.digest("hex");
     video.id = id;
-    video.meta = meta ? meta : await SharedMethods.getMetadata(url, enqueuedBy, null);
+    video.meta = meta && meta.title !== "" ? meta : await SharedMethods.getMetadata(url, enqueuedBy, null);
     if (video.meta.title !== "") {
       this.queue.push(video);
     }

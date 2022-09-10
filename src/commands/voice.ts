@@ -12,7 +12,7 @@ import {
 import { IMetadata, Metadata } from "../model/metadata";
 import { SharedMethods } from "./sharedMethods";
 import { MediaType } from "../model/mediaType";
-import { PlayableResource } from "../model/youtube";
+import { PlayableResource, YouTubePlaylist } from "../model/youtube";
 import moment = require("moment");
 import momentDurationFormatSetup = require("moment-duration-format");
 momentDurationFormatSetup(moment);
@@ -89,16 +89,18 @@ export abstract class Voice {
 
       if (audioPlayer.state.status === AudioPlayerStatus.Idle) {
         let media = await queue.currentItem();
-        while (media.resource.ended) {
-          await queue.dequeue();
-          media = await queue.currentItem()
-        }
+        if (media instanceof PlayableResource) {
+          while (media.resource.ended) {
+            await queue.dequeue();
+            media = await queue.currentItem()
+          }
 
-        audioPlayer.play(media.resource);
-        const meta = media.meta;
-        embed.title = "Now Playing";
-        embed.description = `[${meta.title}](${media.url}) [${meta.queuedBy}]`;
-        server.lastChannel.send({ embeds: [embed] });
+          audioPlayer.play(media.resource);
+          const meta = media.meta;
+          embed.title = "Now Playing";
+          embed.description = `[${meta.title}](${media.url}) [${meta.queuedBy}]`;
+          server.lastChannel.send({ embeds: [embed] });
+        }
       }
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);
@@ -566,7 +568,9 @@ export abstract class Voice {
       media = await SharedMethods.createYoutubePlaylistResource(mediaType[1], interaction.user.username, server);
     } else if (mediaType[0] == MediaType.yt_video || mediaType[0] == MediaType.yt_search) {
       media = new Array<PlayableResource>();
-      media.push(new PlayableResource(mediaType[1]));
+      let vid = new PlayableResource(mediaType[1]);
+      vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.username, new YouTubePlaylist());
+      media.push(vid);
     }
 
     if (media !== undefined && queue) {
