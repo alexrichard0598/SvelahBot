@@ -4,7 +4,7 @@ import { CommandInteraction, Guild, Message, MessageEmbed, TextBasedChannel, Tex
 import { DiscordServer } from "../model/discordServer";
 import * as youtubeSearch from "youtube-search";
 import * as youtubeDL from "youtube-dl-exec"
-const ytdl = youtubeDL.create(path.join(__dirname, "../ytdl/yt-dlp"));
+const ytdl = youtubeDL.create("/bin/ytdlp");
 import { IMetadata, Metadata } from "../model/metadata";
 import { MediaQueue } from "../model/mediaQueue";
 import { MediaType } from "../model/mediaType";
