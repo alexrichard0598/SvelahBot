@@ -517,6 +517,8 @@ export abstract class Voice {
       if (channel.members.filter(m => !m.user.bot).size == 0) {
         server.disconnectBot();
       }
+    } else if (server.queue.hasMedia()) {
+      server.queue.clear();
     }
   }
 
