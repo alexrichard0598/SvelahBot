@@ -133,7 +133,7 @@ export class DiscordServer {
   private async autoDisconnect() {
     clearTimeout(this.timer);
     this.timer = setTimeout(() => {
-      if (!this.queue.hasMedia() && this.audioPlayer.state.status == AudioPlayerStatus.Idle) {
+      if (getVoiceConnection(this.guild.id) != undefined && !this.queue.hasMedia() && this.audioPlayer.state.status == AudioPlayerStatus.Idle) {
         this.disconnectBot();
         this.lastChannel.send({ embeds: [new MessageEmbed().setDescription("Automatically disconnected due to 5 minutes of inactivity")] });
       } else {
