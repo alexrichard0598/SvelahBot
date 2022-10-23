@@ -3,6 +3,7 @@ import { PlayableResource } from "./youtube";
 import { MediaType } from "./mediaType";
 import { createHash } from "crypto";
 import { Metadata } from "./metadata";
+import { DiscordServer } from "./discordServer";
 
 export class MediaQueue {
   private queue: Array<PlayableResource>;
@@ -12,14 +13,16 @@ export class MediaQueue {
     this.queue = new Array<PlayableResource>();
   }
 
-  async enqueue(url: string, enqueuedBy: string, meta?: Metadata): Promise<PlayableResource> {
+  async enqueue(url: string, enqueuedBy: string, server: DiscordServer, meta?: Metadata): Promise<PlayableResource> {
     const video = new PlayableResource(url)
     const hash = createHash("sha256");
     hash.update(`${this.queue.length}${url}${Date.now()}`);
     const id = hash.digest("hex");
     video.id = id;
     video.meta = meta && meta.title !== "" ? meta : await SharedMethods.getMetadata(url, enqueuedBy, null);
-    if (video.meta.title !== "") {
+    if ( RegExp(/.*harmonica.*jurassic.*/, 'i').test(video.meta.title)) {
+      server.lastChannel.send("No.");
+    } else if (video.meta.title !== "") {
       this.queue.push(video);
     }
 

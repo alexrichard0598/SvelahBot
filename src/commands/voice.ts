@@ -577,7 +577,7 @@ export abstract class Voice {
 
     if (media !== undefined && queue) {
       media.forEach((video: PlayableResource) => {
-        server.queue.enqueue(video.url, video.meta.queuedBy, video.meta);
+        server.queue.enqueue(video.url, video.meta.queuedBy, server, video.meta);
       });
     }
 
