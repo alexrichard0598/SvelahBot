@@ -20,7 +20,9 @@ export class MediaQueue {
     const id = hash.digest("hex");
     video.id = id;
     video.meta = meta && meta.title !== "" ? meta : await SharedMethods.getMetadata(url, enqueuedBy, null);
-    if ( RegExp(/.*harmonica.*jurassic.*/, 'i').test(video.meta.title)) {
+    if (RegExp(/.*jurassic.*/, 'i').test(video.meta.title) && RegExp(/.*harmonica.*/, 'i').test(video.meta.title)) {
+      server.lastChannel.send("No.");
+    } else if ((RegExp(/.*titanic.*/, 'i').test(video.meta.title) || (RegExp(/.*heart.*/, 'i').test(video.meta.title))) && (RegExp(/.*flute.*/, 'i').test(video.meta.title) || RegExp(/.*recorder.*/, 'i').test(video.meta.title))) {
       server.lastChannel.send("No.");
     } else if (video.meta.title !== "") {
       this.queue.push(video);
@@ -52,7 +54,7 @@ export class MediaQueue {
   getQueue(): Array<PlayableResource> {
     return Array.from(this.queue);
   }
-  
+
   setQueue(newQueue: Array<PlayableResource>): void {
     this.queue = newQueue;
   }
