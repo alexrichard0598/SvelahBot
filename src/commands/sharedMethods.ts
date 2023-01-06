@@ -140,16 +140,17 @@ export abstract class SharedMethods {
         url: string,
         _queuedBy: string
     ): Promise<AudioResource<unknown>> {
-        const ytStream = ytdl.raw(
+        const raw = ytdl.raw(
             url,
             {
                 output: "-",
                 quiet: true,
-                format: "bestaudio[ext=webm][acodec=opus][asr=48000]",
+                format: "bestaudio[ext=weba][acodec=opus][asr=48000]",
                 limitRate: "100k",
             },
             { stdio: ["ignore", "pipe", "ignore"] }
-        ).stdout;
+        );
+        const ytStream = raw.stdout;
 
         let audioResource: AudioResource;
 
@@ -181,7 +182,7 @@ export abstract class SharedMethods {
             const meta = new Metadata();
             meta.title = vid.title;
             meta.length = vid.duration * 1000;
-            meta.playlist = new YouTubePlaylist(title, result.entries.length) ;
+            meta.playlist = new YouTubePlaylist(title, result.entries.length);
             meta.queuedBy = enqueuedBy;
 
             playlist.push(new PlayableResource(url, meta));
