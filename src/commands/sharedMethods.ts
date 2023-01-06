@@ -2,6 +2,7 @@ import path = require("path");
 import { AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection } from "@discordjs/voice";
 import { CommandInteraction, Guild, Message, MessageEmbed, TextBasedChannel, TextChannel } from "discord.js";
 import { DiscordServer } from "../model/discordServer";
+import { log } from "../logging"
 import * as youtubeSearch from "youtube-search";
 import * as youtubeDL from "youtube-dl-exec"
 const ytdl = youtubeDL.create("/bin/ytdlp");
@@ -116,6 +117,7 @@ export abstract class SharedMethods {
 
         try {
             const raw = await ytdl.raw(url, {
+                output: "./tmp",
                 dumpSingleJson: true,
                 simulate: true,
             });
@@ -127,10 +129,10 @@ export abstract class SharedMethods {
             meta.queuedBy = queuedBy;
             meta.playlist = playlist;
 
+            log.debug(details);
+
         } catch (error) {
-            if (!(error.message as string).includes("Command failed")) {
-                throw error;
-            }
+            log.error(error);
         }
 
         return meta;
@@ -145,7 +147,7 @@ export abstract class SharedMethods {
             {
                 output: "-",
                 quiet: true,
-                format: "bestaudio[ext=weba][acodec=opus][asr=48000]",
+                format: "bestaudio[ext=webm][acodec=opus][asr=48000]",
                 limitRate: "100k",
             },
             { stdio: ["ignore", "pipe", "ignore"] }
