@@ -33,7 +33,7 @@ export class DiscordServer {
         } else {
           this.autoDisconnect();
         }
-      } else if((await this.queue.currentItem()).resource.ended) {
+      } else {
         await this.queue.dequeue();
 
         if (this.queue.hasMedia()) {
@@ -45,8 +45,6 @@ export class DiscordServer {
           embed.description = "Reached end of queue, stoped playing";
           this.autoDisconnect();
         }
-      } else {
-        this.audioPlayer.play((await this.queue.currentItem()).resource);
       }
 
       if (typeof (embed.description) === "string") {
