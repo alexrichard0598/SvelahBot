@@ -1,5 +1,5 @@
 import path = require("path");
-import { AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection } from "@discordjs/voice";
+import { AudioPlayerPlayingState, AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection } from "@discordjs/voice";
 import { CommandInteraction, Guild, Message, MessageEmbed, TextBasedChannel, TextChannel } from "discord.js";
 import { VolfbotServer } from "../model/VolfbotServer";
 import { log } from "../logging"
@@ -128,8 +128,6 @@ export abstract class SharedMethods {
             meta.length = details.duration * 1000;
             meta.queuedBy = queuedBy;
             meta.playlist = playlist;
-
-            log.debug(details);
 
         } catch (error) {
             log.error(error);
@@ -273,20 +271,21 @@ export abstract class SharedMethods {
     }
 
     public static async nowPlayingMessage(server: VolfbotServer): Promise<MessageEmbed> {
+        if(server.audioPlayer.state.status !== AudioPlayerStatus.Playing) return;
         const nowPlaying: PlayableResource = await server.queue.currentItem();
         if (nowPlaying == undefined) return null;
         const metadata: Metadata = nowPlaying.meta;
-        const playbackDuration = nowPlaying.resource.playbackDuration;
+        let playbackDuration = server.audioPlayer.state.playbackDuration;
         const durationString = `${new Date(playbackDuration).getMinutes()}:${('0' + new Date(playbackDuration).getSeconds()).slice(-2)}`;
         const length = metadata.length;
         const lengthString = `${new Date(length).getMinutes()}:${('0' + new Date(length).getSeconds()).slice(-2)}`;
         const percPlayed: number = Math.ceil((playbackDuration / length) * 100);
         let msg = `[${metadata.title}](${nowPlaying.url}) [${metadata.queuedBy}]\n\n`;
-        for (let i = 0; i < 35; i++) {
+        for (let i = 0; i < 33; i++) {
             if (percPlayed / 3 >= i) {
                 msg += '█';
             } else {
-                msg += '▁';
+                msg += '░';
             }
         }
         msg += ` [${durationString}/${lengthString}]`;

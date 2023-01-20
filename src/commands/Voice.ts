@@ -91,7 +91,7 @@ export abstract class Voice {
       if (audioPlayer.state.status === AudioPlayerStatus.Idle) {
         let media = await queue.currentItem();
         if (media instanceof PlayableResource) {
-          while (media.resource.ended) {
+          while ((await media.getResource()).ended) {
             await queue.dequeue();
             media = await queue.currentItem()
           }

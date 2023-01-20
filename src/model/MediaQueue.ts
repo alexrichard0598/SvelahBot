@@ -35,7 +35,7 @@ export class MediaQueue {
     const removedItems = this.queue.slice(0, index);
     const keptItems = this.queue.slice(index);
     if (this.looping) {
-      removedItems.forEach(i => i.resource = undefined);
+      removedItems.forEach(i => i.getResource = undefined);
       this.queue = keptItems.concat(removedItems);
     } else {
       this.queue = keptItems;
@@ -78,17 +78,6 @@ export class MediaQueue {
   }
 
   async currentItem(): Promise<PlayableResource> {
-    if (this.queue[0] == undefined) return undefined;
-    if (this.queue[0].resource == undefined || this.queue[0].resource.ended) {
-      const typeUrl = await SharedMethods.determineMediaType(this.queue[0].url);
-      if (typeUrl[0] == MediaType.yt_video || typeUrl[0] == MediaType.yt_search) {
-        this.queue[0].resource = await SharedMethods.createYoutubeResource(typeUrl[1], this.queue[0].meta.queuedBy);
-      } else if (typeUrl[0] == MediaType.yt_playlist) {
-        SharedMethods.createYoutubePlaylistResource(typeUrl[1], this.queue[0].meta.queuedBy, await SharedMethods.getServerByMediaQueue(this));
-        this.queue.shift();
-        return this.currentItem();
-      }
-    }
     return this.queue[0];
   }
 
