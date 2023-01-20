@@ -1,6 +1,7 @@
 import { Client, Discord, On, Slash, SlashOption } from "discordx";
 import {
   CommandInteraction,
+  Message,
   MessageEmbed,
   VoiceBasedChannel,
   VoiceState,
@@ -9,15 +10,15 @@ import {
   AudioPlayerStatus,
   getVoiceConnection,
 } from "@discordjs/voice";
-import { IMetadata, Metadata } from "../model/metadata";
-import { SharedMethods } from "./sharedMethods";
-import { MediaType } from "../model/mediaType";
-import { PlayableResource, YouTubePlaylist } from "../model/youtube";
+import { IMetadata, Metadata } from "../model/Metadata";
+import { SharedMethods } from "./SharedMethods";
+import { MediaType } from "../model/MediaType";
+import { PlayableResource, YouTubePlaylist } from "../model/YouTube";
 import moment = require("moment");
 import momentDurationFormatSetup = require("moment-duration-format");
 momentDurationFormatSetup(moment);
-import { BotStatus } from "../model/botStatus";
-import { DiscordServer } from "../model/discordServer";
+import { BotStatus } from "../model/BotStatus";
+import { VolfbotServer } from "../model/VolfbotServer";
 
 @Discord()
 export abstract class Voice {
@@ -74,7 +75,7 @@ export abstract class Voice {
 
       /* if the voice connection is undefined create a voice connection */
       if (connection === undefined) {
-        server.updateStatusMessage(server.lastChannel.send({ embeds: [await server.connectBot(interaction)] }));
+        server.updateStatusMessage(await server.lastChannel.send({ embeds: [await server.connectBot(interaction)] }));
         connection = getVoiceConnection(interaction.guildId);
       }
 
@@ -95,11 +96,7 @@ export abstract class Voice {
             media = await queue.currentItem()
           }
 
-          audioPlayer.play(media.resource);
-          const meta = media.meta;
-          embed.title = "Now Playing";
-          embed.description = `[${meta.title}](${media.url}) [${meta.queuedBy}]`;
-          server.lastChannel.send({ embeds: [embed] });
+          server.playSong(media);
         }
       }
     } catch (error) {
@@ -126,7 +123,7 @@ export abstract class Voice {
 
       /* if the voice connection is undefined create a voice connection */
       if (connection === undefined) {
-        server.updateStatusMessage(server.lastChannel.send({ embeds: [await server.connectBot(interaction)] }));
+        server.updateStatusMessage(await server.lastChannel.send({ embeds: [await server.connectBot(interaction)] }));
         connection = getVoiceConnection(interaction.guildId);
       }
 
@@ -156,7 +153,7 @@ export abstract class Voice {
       queue.setQueue(newQueue);
       let currentItem = await queue.currentItem();
       if (currentItem !== undefined) {
-        audioPlayer.play(currentItem.resource);
+        server.playSong(currentItem);
       }
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);
@@ -401,28 +398,13 @@ export abstract class Voice {
   @Slash("np", { description: "Shows the currently playing song and who queued it" })
   async nowPlaying(interaction: CommandInteraction): Promise<void> {
     try {
-      const server = await this.initCommand({ interaction: interaction, isQueueMessage: true });
+      const server = await this.initCommand({ interaction: interaction, isNowPlayingMessage: true });
 
       const nowPlaying: PlayableResource = await server.queue.currentItem();
       if (!server.queue.hasMedia()) {
         interaction.editReply({ embeds: [new MessageEmbed().setDescription("No songs are currently queued")] })
       } else if (nowPlaying.meta instanceof Metadata) {
-        const metadata: Metadata = nowPlaying.meta;
-        const playbackDuration = nowPlaying.resource.playbackDuration;
-        const durationString = `${new Date(playbackDuration).getMinutes()}:${('0' + new Date(playbackDuration).getSeconds()).slice(-2)}`;
-        const length = metadata.length;
-        const lengthString = `${new Date(length).getMinutes()}:${('0' + new Date(length).getSeconds()).slice(-2)}`;
-        const percPlayed: number = Math.ceil((playbackDuration / length) * 100);
-        let msg = `[${metadata.title}](${nowPlaying.url}) [${metadata.queuedBy}]\n\n`;
-        for (let i = 0; i < 35; i++) {
-          if (percPlayed / 3 >= i) {
-            msg += '█';
-          } else {
-            msg += '▁';
-          }
-        }
-        msg += ` [${durationString}/${lengthString}]`;
-        interaction.editReply({ embeds: [new MessageEmbed().setTitle("Now Playing").setDescription(msg)] });
+        interaction.editReply({ embeds: [await SharedMethods.nowPlayingMessage(server)] });
       } else {
         interaction.editReply({ embeds: [new MessageEmbed().setDescription("Could not get currently playing song")] });
       }
@@ -522,12 +504,13 @@ export abstract class Voice {
     }
   }
 
-  private async initCommand({ interaction, isStatusMessage: isStatusMessage, isQueueMessage: isQueueMessage }: InitCommandParams): Promise<DiscordServer> {
+  private async initCommand({ interaction, isStatusMessage: isStatusMessage, isQueueMessage: isQueueMessage, isNowPlayingMessage: isNowPlayingMessage }: InitCommandParams): Promise<VolfbotServer> {
     if (!interaction.deferred) {
       const reply = await interaction.deferReply({ fetchReply: true });
       const server = await SharedMethods.getServer(interaction.guild);
       if (isStatusMessage) await server.updateStatusMessage(reply);
       if (isQueueMessage) await server.updateQueueMessage(reply);
+      if (isNowPlayingMessage) await server.updateNowPlayingMessage(reply);
       server.lastChannel = interaction.channel;
       return server;
     } else {
@@ -559,7 +542,7 @@ export abstract class Voice {
     return [mediaError, embed];
   }
 
-  private async dealWithMedia(interaction: CommandInteraction, url: string, server: DiscordServer, queue = true): Promise<Array<PlayableResource> | PlayableResource | null> {
+  private async dealWithMedia(interaction: CommandInteraction, url: string, server: VolfbotServer, queue = true): Promise<Array<PlayableResource> | PlayableResource | null> {
     const mediaType = await SharedMethods.determineMediaType(url, server).catch(err => {
       this.handleDetermineMediaTypeError(err, interaction);
     });
@@ -624,4 +607,5 @@ interface InitCommandParams {
   interaction: CommandInteraction;
   isStatusMessage?: boolean;
   isQueueMessage?: boolean;
+  isNowPlayingMessage?: boolean;
 }

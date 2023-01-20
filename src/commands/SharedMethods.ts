@@ -1,23 +1,23 @@
 import path = require("path");
 import { AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection } from "@discordjs/voice";
 import { CommandInteraction, Guild, Message, MessageEmbed, TextBasedChannel, TextChannel } from "discord.js";
-import { DiscordServer } from "../model/discordServer";
+import { VolfbotServer } from "../model/VolfbotServer";
 import { log } from "../logging"
 import * as youtubeSearch from "youtube-search";
 import * as youtubeDL from "youtube-dl-exec"
 const ytdl = youtubeDL.create("/bin/ytdlp");
-import { IMetadata, Metadata } from "../model/metadata";
-import { MediaQueue } from "../model/mediaQueue";
-import { MediaType } from "../model/mediaType";
-import { BotStatus } from "../model/botStatus";
-import { YouTubePlaylist, PlayableResource } from "../model/youtube";
+import { IMetadata, Metadata } from "../model/Metadata";
+import { MediaQueue } from "../model/MediaQueue";
+import { MediaType } from "../model/MediaType";
+import { BotStatus } from "../model/BotStatus";
+import { YouTubePlaylist, PlayableResource } from "../model/YouTube";
 import { YouTubeSearchOptions, YouTubeSearchPageResults, YouTubeSearchResults } from "youtube-search";
 import moment = require("moment");
 let spotifyUri = require("spotify-uri");
 
 
 export abstract class SharedMethods {
-    private static servers: DiscordServer[] = new Array<DiscordServer>();
+    private static servers: VolfbotServer[] = new Array<VolfbotServer>();
 
     public static async clearMessages(messages: Array<Message>, interaction?: CommandInteraction) {
         let embed: MessageEmbed;
@@ -56,7 +56,7 @@ export abstract class SharedMethods {
         try {
             const foundServer = this.servers.find((s) => s.guild.id == guild.id);
             if (foundServer === undefined) {
-                let newServer = new DiscordServer(guild);
+                let newServer = new VolfbotServer(guild);
                 this.servers.push(newServer);
                 return newServer;
             }
@@ -88,7 +88,7 @@ export abstract class SharedMethods {
         console.log(err);
     }
 
-    public static async searchYoutube(search: string, server: DiscordServer): Promise<string> {
+    public static async searchYoutube(search: string, server: VolfbotServer): Promise<string> {
         let opts: YouTubeSearchOptions = {
             maxResults: 1,
             key: process.env.GOOGLE_API,
@@ -165,7 +165,7 @@ export abstract class SharedMethods {
     public static async createYoutubePlaylistResource(
         playlistId: string,
         enqueuedBy: string,
-        server: DiscordServer
+        server: VolfbotServer
     ): Promise<Array<PlayableResource>> {
 
         const raw = await ytdl.raw(playlistId, {
@@ -193,11 +193,11 @@ export abstract class SharedMethods {
         return playlist;
     }
 
-    public static async createSpotifyResource(_uri: string, _enqueuedBy: string, _server: DiscordServer): Promise<PlayableResource> {
+    public static async createSpotifyResource(_uri: string, _enqueuedBy: string, _server: VolfbotServer): Promise<PlayableResource> {
         throw new Error("Method not implemented.");
     }
 
-    public static async determineMediaType(url: string, server?: DiscordServer): Promise<[MediaType, string]> {
+    public static async determineMediaType(url: string, server?: VolfbotServer): Promise<[MediaType, string]> {
         let mediaType: MediaType;
 
         return new Promise<[MediaType, string]>(async (resolve, reject) => {
@@ -262,7 +262,7 @@ export abstract class SharedMethods {
         return time;
     }
 
-    public static getStatus(server: DiscordServer): BotStatus {
+    public static getStatus(server: VolfbotServer): BotStatus {
         if (server.audioPlayer.state.status == AudioPlayerStatus.Playing) {
             return BotStatus.PlayingMusic;
         } else if (getVoiceConnection(server.guild.id) !== undefined) {
@@ -270,5 +270,26 @@ export abstract class SharedMethods {
         } else {
             return BotStatus.Idle;
         }
+    }
+
+    public static async nowPlayingMessage(server: VolfbotServer): Promise<MessageEmbed> {
+        const nowPlaying: PlayableResource = await server.queue.currentItem();
+        if (nowPlaying == undefined) return null;
+        const metadata: Metadata = nowPlaying.meta;
+        const playbackDuration = nowPlaying.resource.playbackDuration;
+        const durationString = `${new Date(playbackDuration).getMinutes()}:${('0' + new Date(playbackDuration).getSeconds()).slice(-2)}`;
+        const length = metadata.length;
+        const lengthString = `${new Date(length).getMinutes()}:${('0' + new Date(length).getSeconds()).slice(-2)}`;
+        const percPlayed: number = Math.ceil((playbackDuration / length) * 100);
+        let msg = `[${metadata.title}](${nowPlaying.url}) [${metadata.queuedBy}]\n\n`;
+        for (let i = 0; i < 35; i++) {
+            if (percPlayed / 3 >= i) {
+                msg += '█';
+            } else {
+                msg += '▁';
+            }
+        }
+        msg += ` [${durationString}/${lengthString}]`;
+        return new MessageEmbed().setTitle("Now Playing").setDescription(msg);
     }
 }

@@ -1,9 +1,9 @@
 import { Discord, Slash } from "discordx";
 import { CommandInteraction, MessageEmbed } from "discord.js";
 import { log } from "../logging";
-import { SharedMethods } from "./sharedMethods";
+import { SharedMethods } from "./SharedMethods";
 import * as fs from 'fs';
-import { KnownUser } from "../model/knownUser";
+import { KnownUser } from "../model/KnownUsers";
 
 @Discord()
 export abstract class HelloWorld {

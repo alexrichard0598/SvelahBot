@@ -1,19 +1,21 @@
-import { AudioPlayer, AudioPlayerStatus, createAudioResource, DiscordGatewayAdapterCreator, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice";
+import { AudioPlayer, AudioPlayerState, AudioPlayerStatus, createAudioResource, DiscordGatewayAdapterCreator, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice";
 import { CommandInteraction, Guild, Message, MessageEmbed, TextBasedChannel, VoiceBasedChannel } from "discord.js";
-import { SharedMethods } from "../commands/sharedMethods";
-import { MediaQueue } from "./mediaQueue";
-import { Messages } from "./messages";
-import { IMetadata } from "./metadata";
+import { SharedMethods } from "../commands/SharedMethods";
+import { MediaQueue } from "./MediaQueue";
+import { Messages } from "./Messages";
+import { IMetadata } from "./Metadata";
 import * as fs from 'fs';
+import { PlayableResource } from "./YouTube";
 
-export class DiscordServer {
+export class VolfbotServer {
   guild: Guild;
   queue: MediaQueue;
   audioPlayer: AudioPlayer;
   lastChannel: TextBasedChannel;
   messages: Messages;
   private playingSystemSound = false;
-  private timer;
+  private disconnectTimer;
+  private nowPlayingClock;
 
   constructor(guild: Guild) {
     this.guild = guild;
@@ -27,7 +29,7 @@ export class DiscordServer {
         this.playingSystemSound = false;
         if (this.queue.hasMedia()) {
           const currentItem = await this.queue.currentItem();
-          this.audioPlayer.play(currentItem.resource);
+          this.playSong(currentItem);
           const meta = currentItem.meta as IMetadata;
           embed.description = `Now playing [${meta.title}](${currentItem.url}) [${meta.queuedBy}]`;
         } else {
@@ -38,7 +40,7 @@ export class DiscordServer {
 
         if (this.queue.hasMedia()) {
           const currentItem = await this.queue.currentItem();
-          this.audioPlayer.play(currentItem.resource);
+          this.playSong(currentItem);
           const meta = currentItem.meta as IMetadata;
           embed.description = `Now playing [${meta.title}](${currentItem.url}) [${meta.queuedBy}]`;
         } else {
@@ -48,9 +50,18 @@ export class DiscordServer {
       }
 
       if (typeof (embed.description) === "string") {
-        this.updateStatusMessage(await this.lastChannel.send({ embeds: [embed] }));
+        this.updateNowPlayingMessage(await this.lastChannel.send({ embeds: [embed] }));
       }
     });
+
+    this.audioPlayer.on(AudioPlayerStatus.Playing, async (oldState: AudioPlayerState) => {
+      if (oldState.status == AudioPlayerStatus.Playing || this.playingSystemSound) return;
+      this.updatingNowPlayingMessage();
+    });
+  }
+
+  async playSong(media: PlayableResource) {
+    this.audioPlayer.play(media.resource);
   }
 
   async updateStatusMessage(msg) {
@@ -61,6 +72,21 @@ export class DiscordServer {
       }
     }
     if (msg instanceof Message) this.messages.status = msg;
+  }
+
+  async updateNowPlayingMessage(msg) {
+    let nowPlayingClockActive = this.nowPlayingClock !== undefined;
+    if (nowPlayingClockActive) clearInterval(this.nowPlayingClock);
+
+    if (this.messages.nowplaying != undefined) {
+      const nowplaying: Message = this.messages.nowplaying.channel.messages.resolve(this.messages.status.id);
+      if (nowplaying != null) {
+        if (nowplaying.deletable) nowplaying.delete().catch(err => { SharedMethods.handleErr(err, this.guild) });
+      }
+    }
+    if (msg instanceof Message) this.messages.nowplaying = msg;
+
+    if (nowPlayingClockActive) this.updatingNowPlayingMessage();
   }
 
   async updateQueueMessage(msg) {
@@ -75,6 +101,8 @@ export class DiscordServer {
 
   async disconnectBot(excludedMessages: string[] = []) {
     this.queue.clear();
+    clearInterval(this.nowPlayingClock);
+    clearTimeout(this.disconnectTimer);
     let stream = fs.createReadStream('./src/assets/sounds/volfbot-disconnect.ogg');
     const sound = createAudioResource(stream);
     const connection = getVoiceConnection(this.guild.id);
@@ -95,7 +123,9 @@ export class DiscordServer {
 
       const deleting = await this.lastChannel.send("Cleaning up after disconnect");
       this.playingSystemSound = true;
-      this.audioPlayer.play(sound);
+      let playableResource = new PlayableResource();
+      playableResource.resource = sound;
+      this.playSong(playableResource);
 
       if (this.lastChannel) {
         SharedMethods.clearMessages(await SharedMethods.retrieveBotMessages(this.lastChannel, excludedMessages.concat(deleting.id)));
@@ -126,19 +156,34 @@ export class DiscordServer {
     let stream = fs.createReadStream('./src/assets/sounds/volfbot-connect.ogg');
     const sound = createAudioResource(stream);
     this.playingSystemSound = true;
-    this.audioPlayer.play(sound);
+    let playableResource = new PlayableResource();
+    playableResource.resource = sound;
+    this.playSong(playableResource);
     return embed;
   }
 
   private async autoDisconnect() {
-    clearTimeout(this.timer);
-    this.timer = setTimeout(() => {
+    clearTimeout(this.disconnectTimer);
+    this.disconnectTimer = setTimeout(() => {
       if (getVoiceConnection(this.guild.id) != undefined && !this.queue.hasMedia() && this.audioPlayer.state.status == AudioPlayerStatus.Idle) {
         this.disconnectBot();
         this.lastChannel.send({ embeds: [new MessageEmbed().setDescription("Automatically disconnected due to 5 minutes of inactivity")] });
       } else {
-        clearTimeout(this.timer);
+        clearTimeout(this.disconnectTimer);
       }
     }, 300000);
+  }
+
+  private async updatingNowPlayingMessage() {
+    if (this.nowPlayingClock !== undefined) {
+      clearInterval(this.nowPlayingClock);
+    }
+    this.nowPlayingClock = setInterval(async () => {
+      const nowPlayingMessage = this.messages.nowplaying
+      if (nowPlayingMessage.editable) {
+        const embed = await SharedMethods.nowPlayingMessage(this);
+        this.messages.nowplaying = await nowPlayingMessage.edit({ embeds: [embed] });
+      }
+    }, 1000);
   }
 }

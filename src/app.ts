@@ -34,9 +34,10 @@ async function start() {
         Intents.FLAGS.GUILD_BANS,
       ],
       botGuilds: process.env.DEV == "true" ? ["664999986974687242"] : undefined,
+      presence: process.env.DEV == "true" ? { status: "dnd", activities: [{ name: "Bot is underdevlopment" }] } : { status: "online", activities: [{ name: "" }] },
     });
 
-    if(process.env.DEV == "true") {
+    if (process.env.DEV == "true") {
       log.info("Developer Mode");
     } else {
       log.info("Live");
@@ -57,6 +58,8 @@ async function start() {
     await client
       .login(process.env.TOKEN)
       .then(() => log.info("Volfbot Online"));
+
+    console.log(process.env.DEV);
   } catch (error) {
     log.error(error);
   }

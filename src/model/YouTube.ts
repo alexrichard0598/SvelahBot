@@ -1,5 +1,5 @@
 import { AudioResource } from "@discordjs/voice";
-import { Metadata } from "./metadata";
+import { Metadata } from "./Metadata";
 
 export class PlayableResource {
     url: string;

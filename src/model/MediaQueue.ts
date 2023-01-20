@@ -1,9 +1,9 @@
-import { SharedMethods } from "../commands/sharedMethods";
-import { PlayableResource } from "./youtube";
-import { MediaType } from "./mediaType";
+import { SharedMethods } from "../commands/SharedMethods";
+import { PlayableResource } from "./YouTube";
+import { MediaType } from "./MediaType";
 import { createHash } from "crypto";
-import { Metadata } from "./metadata";
-import { DiscordServer } from "./discordServer";
+import { Metadata } from "./Metadata";
+import { VolfbotServer } from "./VolfbotServer";
 
 export class MediaQueue {
   private queue: Array<PlayableResource>;
@@ -13,7 +13,7 @@ export class MediaQueue {
     this.queue = new Array<PlayableResource>();
   }
 
-  async enqueue(url: string, enqueuedBy: string, server: DiscordServer, meta?: Metadata): Promise<PlayableResource> {
+  async enqueue(url: string, enqueuedBy: string, server: VolfbotServer, meta?: Metadata): Promise<PlayableResource> {
     const video = new PlayableResource(url)
     const hash = createHash("sha256");
     hash.update(`${this.queue.length}${url}${Date.now()}`);
