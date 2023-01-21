@@ -5,7 +5,8 @@ import { IsAdmin } from "../guards/isAdmin";
 
 @Discord()
 export abstract class Voice {
-  @Slash("shutdown", {
+  @Slash({
+    name: "shutdown",
     description: "Shutsdown the bot, can only be accessed by bot admins",
   })
   @Guard(IsAdmin)

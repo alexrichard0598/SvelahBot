@@ -1,7 +1,8 @@
-import chalk = require("chalk");
 import { Logger } from "ts-log";
 import * as fs from "fs";
 import * as path from "path";
+import chalk = require("chalk");
+
 
 const logFile = path.join(__dirname, '..', 'log.txt');
 
@@ -9,7 +10,7 @@ class Log implements Logger {
   [x: string]: any;
 
   trace(message?: any, ...optionalParams: any[]): void {
-    console.log(chalk.bgWhite.black("[" + new Date().toISOString() + "] " + "TRACE: " + message));
+    console.log(chalk.black("[" + new Date().toISOString() + "] " + "TRACE: " + message));
     fs.appendFileSync(logFile, "[" + new Date().toISOString() + "] " + "TRACE: " + message + '\n');
   }
   debug(message?: any, ...optionalParams: any[]): void {

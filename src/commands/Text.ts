@@ -1,5 +1,5 @@
 import { Discord, Slash } from "discordx";
-import { CommandInteraction, MessageEmbed } from "discord.js";
+import { CommandInteraction, EmbedBuilder } from "discord.js";
 import { log } from "../logging";
 import { SharedMethods } from "./SharedMethods";
 import * as fs from 'fs';
@@ -7,14 +7,14 @@ import { KnownUser } from "../model/KnownUsers";
 
 @Discord()
 export abstract class HelloWorld {
-  @Slash("hello", { description: "A hello world message" })
+  @Slash({name: "hello", description: "A hello world message" })
   async hello(interaction: CommandInteraction): Promise<void> {
     interaction.reply("Hello world!").catch((err) => {
       log.error(err);
     });
   }
 
-  @Slash("heya", { description: "Replies to the user" })
+  @Slash({name: "heya", description: "Replies to the user" })
   async heya(interaction: CommandInteraction): Promise<void> {
     try {
       interaction.reply("Heya " + interaction.user.username)
@@ -26,7 +26,7 @@ export abstract class HelloWorld {
       const knownUser = knownUsers.find(u => u.userId == interaction.user.id);
 
       if (knownUser != undefined) {
-        let msg = new MessageEmbed();
+        let msg = new EmbedBuilder();
         let info = Object.create({name: "🤖User Recognized🤖", value: `${knownUser.message}`});
 
         msg.addFields(info);
@@ -39,7 +39,7 @@ export abstract class HelloWorld {
     }
   }
 
-  @Slash("clear-messages", { description: "Clears all messages from a bot in the text channel" })
+  @Slash({name: "clear-messages",  description: "Clears all messages from a bot in the text channel" })
   async clear(interaction: CommandInteraction): Promise<void> {
     try {
       await interaction.deferReply();

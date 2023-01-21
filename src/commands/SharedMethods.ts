@@ -1,6 +1,6 @@
 import path = require("path");
-import { AudioPlayerPlayingState, AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection } from "@discordjs/voice";
-import { CommandInteraction, Guild, Message, MessageEmbed, TextBasedChannel, TextChannel } from "discord.js";
+import { AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection } from "@discordjs/voice";
+import { CommandInteraction, Guild, Message, EmbedBuilder, TextBasedChannel, TextChannel } from "discord.js";
 import { VolfbotServer } from "../model/VolfbotServer";
 import { log } from "../logging"
 import * as youtubeSearch from "youtube-search";
@@ -13,24 +13,23 @@ import { BotStatus } from "../model/BotStatus";
 import { YouTubePlaylist, PlayableResource } from "../model/YouTube";
 import { YouTubeSearchOptions, YouTubeSearchPageResults, YouTubeSearchResults } from "youtube-search";
 import moment = require("moment");
-let spotifyUri = require("spotify-uri");
 
 
 export abstract class SharedMethods {
     private static servers: VolfbotServer[] = new Array<VolfbotServer>();
 
     public static async clearMessages(messages: Array<Message>, interaction?: CommandInteraction) {
-        let embed: MessageEmbed;
+        let embed: EmbedBuilder;
         const server = messages.length > 0 ? await this.getServer(messages[0].guild) : undefined;
         if (messages.length > 0) {
             if (server.lastChannel instanceof TextChannel) {
                 server.lastChannel.bulkDelete(messages);
-                embed = new MessageEmbed().setDescription("Messages deleted");
+                embed = new EmbedBuilder().setDescription("Messages deleted");
             } else {
-                embed = new MessageEmbed().setDescription("Cannot delete messages");
+                embed = new EmbedBuilder().setDescription("Cannot delete messages");
             }
         } else {
-            embed = new MessageEmbed().setDescription("No messages to delete");
+            embed = new EmbedBuilder().setDescription("No messages to delete");
         }
 
         if (interaction) {
@@ -42,7 +41,7 @@ export abstract class SharedMethods {
 
     public static async retrieveBotMessages(channel: TextBasedChannel, exclude: string[] = []): Promise<Array<Message>> {
         let messages = new Array<Message>();
-        (await channel.messages.fetch({ limit: 100 }, { force: true })).forEach(msg => {
+        (await channel.messages.fetch({ limit: 100, cache: false })).forEach(msg => {
             let oldestMsg = new Date();
             oldestMsg.setDate(oldestMsg.getDate() - 13);
             if (msg.author.id == "698214544560095362" && !exclude.includes(msg.id) && msg.createdAt > oldestMsg) {
@@ -79,10 +78,10 @@ export abstract class SharedMethods {
     }
 
     public static async handleErr(err, guild: Guild) {
-        const embed = new MessageEmbed();
+        const embed = new EmbedBuilder();
         const server = await this.getServer(guild);
-        embed.title = "Error!";
-        embed.description = `${err.message}\r\n\`\`\`${err.stack}\`\`\`\r\n**Please let the developer know**`;
+        embed.setTitle("Error!");
+        embed.setDescription(`${err.message}\r\n\`\`\`${err.stack}\`\`\`\r\n**Please let the developer know**`);
         if (server.lastChannel !== undefined)
             server.lastChannel.send({ embeds: [embed] });
         console.log(err);
@@ -94,7 +93,7 @@ export abstract class SharedMethods {
             key: process.env.GOOGLE_API,
         };
 
-        server.updateStatusMessage(await server.lastChannel.send({ embeds: [new MessageEmbed().setDescription(`Searching youtube for "${search}"`)] }));
+        server.updateStatusMessage(await server.lastChannel.send({ embeds: [new EmbedBuilder().setDescription(`Searching youtube for "${search}"`)] }));
 
         return new Promise<string>((resolve, reject) => {
             youtubeSearch(search, opts).then((res: { results: YouTubeSearchResults[], pageInfo: YouTubeSearchPageResults }) => {
@@ -104,7 +103,7 @@ export abstract class SharedMethods {
                 if (err) console.log(err);
                 if (err.response.data.error.errors[0].reason == 'quotaExceeded') {
                     const time = this.getQuotaResetTime();
-                    reject(new MessageEmbed().setTitle("Daily YouTube Search Limit Reached!").setDescription(`Limit will reset ${time.fromNow()}`));
+                    reject(new EmbedBuilder().setTitle("Daily YouTube Search Limit Reached!").setDescription(`Limit will reset ${time.fromNow()}`));
                 } else {
                     reject(err);
                 }
@@ -116,13 +115,13 @@ export abstract class SharedMethods {
         const meta = new Metadata();
 
         try {
-            const raw = await ytdl.raw(url, {
+            const exec = await ytdl.exec(url, {
                 output: "./tmp",
                 dumpSingleJson: true,
                 simulate: true,
             });
 
-            const details = JSON.parse(raw.stdout);
+            const details = JSON.parse(exec.stdout);
 
             meta.title = details.title;
             meta.length = details.duration * 1000;
@@ -140,7 +139,7 @@ export abstract class SharedMethods {
         url: string,
         _queuedBy: string
     ): Promise<AudioResource<unknown>> {
-        const raw = ytdl.raw(
+        const exec = ytdl.exec(
             url,
             {
                 output: "-",
@@ -150,7 +149,7 @@ export abstract class SharedMethods {
             },
             { stdio: ["ignore", "pipe", "ignore"] }
         );
-        const ytStream = raw.stdout;
+        const ytStream = exec.stdout;
 
         let audioResource: AudioResource;
 
@@ -166,13 +165,13 @@ export abstract class SharedMethods {
         server: VolfbotServer
     ): Promise<Array<PlayableResource>> {
 
-        const raw = await ytdl.raw(playlistId, {
+        const exec = await ytdl.exec(playlistId, {
             dumpSingleJson: true,
             simulate: true,
             flatPlaylist: true
         });
 
-        const result = JSON.parse(raw.stdout);
+        const result = JSON.parse(exec.stdout);
 
         let playlist = new Array<PlayableResource>();
 
@@ -224,19 +223,19 @@ export abstract class SharedMethods {
             } else if (new RegExp(/^[A-Za-z0-9-_]{34}$/).test(url)) {
                 mediaType = MediaType.yt_playlist;
                 url = "https://www.youtube.com/playlist?list=" + url;
-            } else if (new RegExp(/spotify/).test(url)) {
-                url = spotifyUri.formatURI(spotifyUri.parse(url));
-                switch (url.split(":")[1]) {
-                    case "track":
-                        mediaType = MediaType.spotify_track;
-                        break;
-                    case "playlist":
-                        mediaType = MediaType.spotify_playlist;
-                        break;
-                    default:
-                        mediaType = MediaType.unknown;
-                        break;
-                }
+                //} else if (new RegExp(/spotify/).test(url)) {
+                //url = spotifyUri.formatURI(spotifyUri.parse(url));
+                //switch (url.split(":")[1]) {
+                //    case "track":
+                //        mediaType = MediaType.spotify_track;
+                //        break;
+                //    case "playlist":
+                //        mediaType = MediaType.spotify_playlist;
+                //        break;
+                //    default:
+                //        mediaType = MediaType.unknown;
+                //        break;
+                //}
             } else if (server != undefined) {
                 mediaType = MediaType.yt_search;
                 let id = await this.searchYoutube(url, server).catch(err => {
@@ -270,8 +269,8 @@ export abstract class SharedMethods {
         }
     }
 
-    public static async nowPlayingMessage(server: VolfbotServer): Promise<MessageEmbed> {
-        if(server.audioPlayer.state.status !== AudioPlayerStatus.Playing) return;
+    public static async nowPlayingMessage(server: VolfbotServer): Promise<EmbedBuilder> {
+        if (server.audioPlayer.state.status !== AudioPlayerStatus.Playing) return;
         const nowPlaying: PlayableResource = await server.queue.currentItem();
         if (nowPlaying == undefined) return null;
         const metadata: Metadata = nowPlaying.meta;
@@ -289,6 +288,6 @@ export abstract class SharedMethods {
             }
         }
         msg += ` [${durationString}/${lengthString}]`;
-        return new MessageEmbed().setTitle("Now Playing").setDescription(msg);
+        return new EmbedBuilder().setTitle("Now Playing").setDescription(msg);
     }
 }

@@ -1,13 +1,14 @@
 import { AudioPlayer, AudioPlayerState, AudioPlayerStatus, createAudioResource, DiscordGatewayAdapterCreator, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice";
-import { CommandInteraction, Guild, Message, MessageEmbed, TextBasedChannel, VoiceBasedChannel } from "discord.js";
+import { CommandInteraction, Guild, Message, EmbedBuilder, TextBasedChannel, VoiceBasedChannel } from "discord.js";
 import { SharedMethods } from "../commands/SharedMethods";
 import { MediaQueue } from "./MediaQueue";
 import { Messages } from "./Messages";
 import { IMetadata } from "./Metadata";
 import * as fs from 'fs';
 import { PlayableResource } from "./YouTube";
-import { On } from "discordx";
+import { Discord, On } from "discordx";
 
+@Discord()
 export class VolfbotServer {
   guild: Guild;
   queue: MediaQueue;
@@ -36,7 +37,7 @@ export class VolfbotServer {
     this.audioPlayer.play(await media.getResource());
   }
 
-  @On("messageDelete") 
+  @On({event: "messageDelete"}) 
   async trackDeletedMessages(message) {
     const messageID = message.id;
     if(this.messages.status !== undefined && messageID == this.messages.status.id) {
@@ -122,24 +123,24 @@ export class VolfbotServer {
     }
   }
 
-  async connectBot(interaction: CommandInteraction): Promise<MessageEmbed> {
+  async connectBot(interaction: CommandInteraction): Promise<EmbedBuilder> {
     this.lastChannel = interaction.channel;
     const guildMember = await this.guild.members.fetch(
       interaction.user
     );
-    const embed = new MessageEmbed;
+    const embed = new EmbedBuilder;
     const vc: VoiceBasedChannel = guildMember.voice.channel;
     const audioPlayer = this.audioPlayer;
 
     if (vc === null) {
-      embed.description = "You are not part of a voice chat, please join a voice chat first.";
+      embed.setDescription("You are not part of a voice chat, please join a voice chat first.");
     } else {
       joinVoiceChannel({
         channelId: vc.id,
         guildId: vc.guildId,
         adapterCreator: vc.guild.voiceAdapterCreator as unknown as DiscordGatewayAdapterCreator,
       }).subscribe(audioPlayer);
-      embed.description = "Joined " + vc.name;
+      embed.setDescription("Joined " + vc.name);
     }
 
     let stream = fs.createReadStream('./src/assets/sounds/volfbot-connect.ogg');
@@ -151,7 +152,7 @@ export class VolfbotServer {
   }
 
   private async playerIdle() {
-    const embed = new MessageEmbed();
+    const embed = new EmbedBuilder();
 
     if (this.playingSystemSound) {
       this.playingSystemSound = false;
@@ -159,7 +160,7 @@ export class VolfbotServer {
         const currentItem = await this.queue.currentItem();
         this.playSong(currentItem);
         const meta = currentItem.meta as IMetadata;
-        embed.description = `Now playing [${meta.title}](${currentItem.url}) [${meta.queuedBy}]`;
+        embed.setDescription(`Now playing [${meta.title}](${currentItem.url}) [${meta.queuedBy}]`);
       } else {
         this.autoDisconnect();
       }
@@ -170,14 +171,14 @@ export class VolfbotServer {
         const currentItem = await this.queue.currentItem();
         this.playSong(currentItem);
         const meta = currentItem.meta as IMetadata;
-        embed.description = `Now playing [${meta.title}](${currentItem.url}) [${meta.queuedBy}]`;
+        embed.setDescription(`Now playing [${meta.title}](${currentItem.url}) [${meta.queuedBy}]`);
       } else {
-        embed.description = "Reached end of queue, stoped playing";
+        embed.setDescription("Reached end of queue, stoped playing");
         this.autoDisconnect();
       }
     }
 
-    if (typeof (embed.description) === "string") {
+    if (typeof (embed.data.description) === "string") {
       this.updateNowPlayingMessage(await this.lastChannel.send({ embeds: [embed] }));
     }
   }
@@ -197,7 +198,7 @@ export class VolfbotServer {
     this.disconnectTimer = setTimeout(() => {
       if (getVoiceConnection(this.guild.id) != undefined && !this.queue.hasMedia() && this.audioPlayer.state.status == AudioPlayerStatus.Idle) {
         this.disconnectBot();
-        this.lastChannel.send({ embeds: [new MessageEmbed().setDescription("Automatically disconnected due to 5 minutes of inactivity")] });
+        this.lastChannel.send({ embeds: [new EmbedBuilder().setDescription("Automatically disconnected due to 5 minutes of inactivity")] });
       } else {
         clearTimeout(this.disconnectTimer);
       }
@@ -211,7 +212,7 @@ export class VolfbotServer {
     this.nowPlayingClock = setInterval(async () => {
       if (this.messages.nowplaying !== undefined) {
         const channel = await this.guild.channels.fetch(this.messages.nowplaying.channelId);
-        if (channel.isText) {
+        if (channel.isTextBased) {
           const nowPlayingMessage = await (channel as TextBasedChannel).messages.fetch(this.messages.nowplaying.id);
           if (nowPlayingMessage.editable && nowPlayingMessage) {
             const embed = await SharedMethods.nowPlayingMessage(this);

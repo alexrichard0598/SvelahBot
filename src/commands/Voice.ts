@@ -2,9 +2,10 @@ import { Client, Discord, On, Slash, SlashOption } from "discordx";
 import {
   CommandInteraction,
   Message,
-  MessageEmbed,
+  EmbedBuilder,
   VoiceBasedChannel,
   VoiceState,
+  ApplicationCommandOptionType,
 } from "discord.js";
 import {
   AudioPlayerStatus,
@@ -22,7 +23,8 @@ import { VolfbotServer } from "../model/VolfbotServer";
 
 @Discord()
 export abstract class Voice {
-  @Slash("join", {
+  @Slash({
+    name: "join",
     description: "Join the voice channel you are currently connected to",
   })
   async join(interaction: CommandInteraction): Promise<void> {
@@ -36,8 +38,8 @@ export abstract class Voice {
     }
   }
 
-  @Slash("disconect", { description: "Disconnect from the voice chanel" })
-  @Slash("dc", { description: "Disconnect from the voice chanel" })
+  @Slash({ name: "disconect", description: "Disconnect from the voice chanel" })
+  @Slash({ name: "dc", description: "Disconnect from the voice chanel" })
   async disconnect(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
@@ -59,16 +61,16 @@ export abstract class Voice {
     }
   }
 
-  @Slash("play", { description: "Plays music" })
+  @Slash({ name: "play", description: "Plays music" })
   async play(
-    @SlashOption("media", { description: "The media to play", required: true })
+    @SlashOption({ name: "media", description: "The media to play", required: true, type: ApplicationCommandOptionType.String })
     url: string,
     interaction: CommandInteraction
   ): Promise<void> {
     try {
       const server = await this.initCommand({ interaction: interaction });
 
-      const embed = new MessageEmbed(); // create message embed
+      const embed = new EmbedBuilder(); // create message embed
       const queue = server.queue; // get the server's queue
       const audioPlayer = server.audioPlayer; // get the server's audioPlayer
       let connection = getVoiceConnection(interaction.guildId); // get the current voice connection
@@ -104,9 +106,9 @@ export abstract class Voice {
     }
   }
 
-  @Slash("playnow", { description: "Adds item to start of the queue and starts playing it now" })
+  @Slash({ name: "playnow", description: "Adds item to start of the queue and starts playing it now" })
   async playnow(
-    @SlashOption("media", { description: "The media to play", required: true })
+    @SlashOption({ name: "media", description: "The media to play", required: true, type: ApplicationCommandOptionType.String })
     url: string,
     interaction: CommandInteraction
   ) {
@@ -160,7 +162,7 @@ export abstract class Voice {
     }
   }
 
-  @Slash("stop", { description: "Stops playback and clears queue" })
+  @Slash({ name: "stop", description: "Stops playback and clears queue" })
   async stop(interaction: CommandInteraction) {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
@@ -184,7 +186,7 @@ export abstract class Voice {
     }
   }
 
-  @Slash("clear", { description: "Clears the queue" })
+  @Slash({ name: "clear", description: "Clears the queue" })
   async clear(interaction: CommandInteraction) {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
@@ -200,21 +202,21 @@ export abstract class Voice {
     }
   }
 
-  @Slash("resume", { description: "Resumes playback" })
+  @Slash({ name: "resume", description: "Resumes playback" })
   async resume(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
 
-      const embed = new MessageEmbed();
+      const embed = new EmbedBuilder();
       const audioPlayer = server.audioPlayer;
       server.lastChannel = interaction.channel;
       if (audioPlayer.state.status === AudioPlayerStatus.Paused) {
         audioPlayer.unpause();
-        embed.description = "Resumed queue";
+        embed.setDescription("Resumed queue");
       } else if (audioPlayer.state.status === AudioPlayerStatus.Idle) {
-        embed.description = "No audio queued up";
+        embed.setDescription("No audio queued up");
       } else {
-        embed.description = "Cannot resume queue";
+        embed.setDescription("Cannot resume queue");
       }
       interaction.editReply({ embeds: [embed] });
 
@@ -223,21 +225,21 @@ export abstract class Voice {
     }
   }
 
-  @Slash("pause", { description: "Pauses any currently playing music" })
+  @Slash({ name: "pause", description: "Pauses any currently playing music" })
   async pause(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
 
-      const embed = new MessageEmbed();
+      const embed = new EmbedBuilder();
       const audioPlayer = server.audioPlayer;
       server.lastChannel = interaction.channel;
       if (audioPlayer.state.status === AudioPlayerStatus.Playing) {
         audioPlayer.pause();
-        embed.description = "Paused playback";
+        embed.setDescription("Paused playback");
       } else if (audioPlayer.state.status === AudioPlayerStatus.Idle) {
-        embed.description = "No audio queued up";
+        embed.setDescription("No audio queued up");
       } else {
-        embed.description = "Cannot pause";
+        embed.setDescription("Cannot pause");
       }
       interaction.editReply({ embeds: [embed] });
     } catch (error) {
@@ -245,7 +247,8 @@ export abstract class Voice {
     }
   }
 
-  @Slash("ping", {
+  @Slash({
+    name: "ping",
     description: "Returns the ping of the current voice connection",
   })
   async ping(interaction: CommandInteraction): Promise<void> {
@@ -266,9 +269,9 @@ export abstract class Voice {
     }
   }
 
-  @Slash("queue", { description: "View the current queue" })
+  @Slash({ name: "queue", description: "View the current queue" })
   async viewQueue(
-    @SlashOption("page", { description: "The page of the queue to display", required: false }) page: string,
+    @SlashOption({name: "page",  description: "The page of the queue to display", required: false, type: ApplicationCommandOptionType.Integer }) page: string,
     interaction: CommandInteraction
   ): Promise<void> {
     try {
@@ -278,7 +281,7 @@ export abstract class Voice {
       const audioPlayer = server.audioPlayer;
       server.lastChannel = interaction.channel;
 
-      const embed = new MessageEmbed();
+      const embed = new EmbedBuilder();
       let title =
         audioPlayer.state.status == AudioPlayerStatus.Playing
           ? "Now Playing"
@@ -331,9 +334,9 @@ export abstract class Voice {
     }
   }
 
-  @Slash("skip", { description: "Skip the currently playing song(s)" })
+  @Slash({ name: "skip", description: "Skip the currently playing song(s)" })
   async skip(
-    @SlashOption("index", { description: "The index of the song to skip to" })
+    @SlashOption({name: "index", description: "The index of the song to skip to", type: ApplicationCommandOptionType.Integer })
     skip: string,
     interaction: CommandInteraction
   ): Promise<void> {
@@ -342,25 +345,25 @@ export abstract class Voice {
 
       const queue = server.queue;
       let i = parseInt(skip);
-      const embed = new MessageEmbed();
+      const embed = new EmbedBuilder();
       const audioPlayer = server.audioPlayer;
 
       if (!queue.hasMedia()) {
-        embed.description = "No songs to skip";
+        embed.setDescription("No songs to skip");
       } else if (!isNaN(i)) {
         const queueLength = queue.getQueue().length;
         if (queueLength < i) {
-          embed.description = `Only ${queueLength} songs in queue, cannot skip to song #${i} as no such song exists`;
+          embed.setDescription(`Only ${queueLength} songs in queue, cannot skip to song #${i} as no such song exists`);
         } else if (i == 1) {
-          embed.description = `Song #1 is the currently playing song`;
+          embed.setDescription(`Song #1 is the currently playing song`);
         } else {
           await queue.dequeue(i - 2);
           audioPlayer.stop();
-          embed.description = "Skipped " + (i - 1).toString() + " songs";
+          embed.setDescription("Skipped " + (i - 1).toString() + " songs");
         }
       } else {
         audioPlayer.stop();
-        embed.description = "Song skipped";
+        embed.setDescription("Song skipped");
       }
 
       interaction.editReply({ embeds: [embed] });
@@ -369,69 +372,69 @@ export abstract class Voice {
     }
   }
 
-  @Slash("loop", { description: "Loops the current queue until looping is stoped" })
+  @Slash({ name: "loop", description: "Loops the current queue until looping is stoped" })
   async loop(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
 
       server.queue.loopQueue();
-      interaction.editReply({ embeds: [new MessageEmbed().setDescription("Queue will loop until stoped\n(use /end-loop to stop looping)")] });
+      interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Queue will loop until stoped\n(use /end-loop to stop looping)")] });
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);
     }
   }
 
-  @Slash("end-looping", { description: "Stops looping the current queue" })
-  @Slash("eloop", { description: "Stops looping the current queue" })
+  @Slash({ name: "end-looping", description: "Stops looping the current queue" })
+  @Slash({ name: "eloop", description: "Stops looping the current queue" })
   async EndLoop(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
 
       server.queue.endLoop();
-      interaction.editReply({ embeds: [new MessageEmbed().setDescription("Queue will no longer loop")] });
+      interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Queue will no longer loop")] });
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);
     }
   }
 
-  @Slash("now-playing", { description: "Shows the currently playing song and who queued it" })
-  @Slash("np", { description: "Shows the currently playing song and who queued it" })
+  @Slash({ name: "now-playing", description: "Shows the currently playing song and who queued it" })
+  @Slash({ name: "np", description: "Shows the currently playing song and who queued it" })
   async nowPlaying(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await this.initCommand({ interaction: interaction, isNowPlayingMessage: true });
 
       const nowPlaying: PlayableResource = await server.queue.currentItem();
       if (!server.queue.hasMedia()) {
-        interaction.editReply({ embeds: [new MessageEmbed().setDescription("No songs are currently queued")] })
+        interaction.editReply({ embeds: [new EmbedBuilder().setDescription("No songs are currently queued")] })
       } else if (nowPlaying.meta instanceof Metadata) {
         interaction.editReply({ embeds: [await SharedMethods.nowPlayingMessage(server)] });
       } else {
-        interaction.editReply({ embeds: [new MessageEmbed().setDescription("Could not get currently playing song")] });
+        interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Could not get currently playing song")] });
       }
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);
     }
   }
 
-  @Slash("shuffle", { description: "Shuffle the current queue" })
+  @Slash({ name: "shuffle", description: "Shuffle the current queue" })
   async shuffle(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true, isQueueMessage: true });
 
       if (await server.queue.getTotalLength() == 0) {
-        interaction.editReply({ embeds: [new MessageEmbed().setDescription("Queue is empty")] });
+        interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Queue is empty")] });
       } else {
         server.queue.shuffle();
-        interaction.editReply({ embeds: [new MessageEmbed().setDescription("Queue shuffled")] });
+        interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Queue shuffled")] });
       }
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);
     }
   }
 
-  @Slash("remove", { description: "Remove an item at the index" })
+  @Slash({ name: "remove", description: "Remove an item at the index" })
   async removeItem(
-    @SlashOption("index", { description: "The index of the song to remove" })
+    @SlashOption({name: "index", description: "The index of the song to remove", type: ApplicationCommandOptionType.Integer })
     indexString: string,
     interaction: CommandInteraction
   ): Promise<void> {
@@ -440,26 +443,26 @@ export abstract class Voice {
 
       const index = parseInt(indexString);
       if (!server.queue.hasMedia()) {
-        interaction.editReply({ embeds: [new MessageEmbed().setDescription(`No songs are currently queued`)] });
+        interaction.editReply({ embeds: [new EmbedBuilder().setDescription(`No songs are currently queued`)] });
       } else if (isNaN(index)) {
-        interaction.editReply({ embeds: [new MessageEmbed().setDescription(`Could not parse ${indexString}, please enter a whole number`)] });
+        interaction.editReply({ embeds: [new EmbedBuilder().setDescription(`Could not parse ${indexString}, please enter a whole number`)] });
       } else if (index == 1) {
         server.queue.removeItemAt(index - 1);
         server.audioPlayer.stop();
-        interaction.editReply({ embeds: [new MessageEmbed().setDescription(`Currently playing song removed`)] });
+        interaction.editReply({ embeds: [new EmbedBuilder().setDescription(`Currently playing song removed`)] });
       } else if (index > server.queue.getQueue().length) {
-        interaction.editReply({ embeds: [new MessageEmbed().setDescription(`You entered a number larger than the number of queued songs`)] });
+        interaction.editReply({ embeds: [new EmbedBuilder().setDescription(`You entered a number larger than the number of queued songs`)] });
       } else {
         const song = server.queue.getItemAt(index - 1);
         server.queue.removeItemAt(index - 1);
-        interaction.editReply({ embeds: [new MessageEmbed().setDescription(`${song.meta.title} at queue position ${index} removed`)] });
+        interaction.editReply({ embeds: [new EmbedBuilder().setDescription(`${song.meta.title} at queue position ${index} removed`)] });
       }
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);
     }
   }
 
-  @Slash("status", { description: "Returns the current status of the bot" })
+  @Slash({ name: "status", description: "Returns the current status of the bot" })
   async status(interaction: CommandInteraction) {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
@@ -482,13 +485,13 @@ export abstract class Voice {
           break;
       }
 
-      interaction.editReply({ embeds: [new MessageEmbed().setDescription(msg).setTitle("Current Status")] });
+      interaction.editReply({ embeds: [new EmbedBuilder().setDescription(msg).setTitle("Current Status")] });
     } catch (error) {
       SharedMethods.handleErr(error, interaction.guild);
     }
   }
 
-  @On("voiceStateUpdate")
+  @On({event: "voiceStateUpdate"})
   async voiceStatusUpdate(voiceStates: [oldState: VoiceState, newState: VoiceState], _client: Client) {
     const botUserId = "698214544560095362";
     const server = await SharedMethods.getServer(voiceStates[0].guild);
@@ -518,25 +521,25 @@ export abstract class Voice {
     }
   }
 
-  private checkMediaStatus(media: PlayableResource, isPlaylist: boolean, username: string): [boolean, MessageEmbed] {
-    let embed = new MessageEmbed();
+  private checkMediaStatus(media: PlayableResource, isPlaylist: boolean, username: string): [boolean, EmbedBuilder] {
+    let embed = new EmbedBuilder();
     let mediaError = false;
 
     if (media == undefined) {
-      embed.title = "Unknown Error"
-      embed.description = "Could not get queued item info, please let the developer know what happened.";
+      embed.setTitle("Unknown Error");
+      embed.setDescription("Could not get queued item info, please let the developer know what happened.");
       mediaError = true;
     } else if (media.meta.title == "") {
-      embed.title = "Failed to queue video"
-      embed.description = "This video is unavailable to be queued. Sorry about that."
+      embed.setTitle("Failed to queue video");
+      embed.setDescription("This video is unavailable to be queued. Sorry about that.");
       mediaError = true;
     } else if (isPlaylist) {
-      embed.title = "Playlist Queued"
-      embed.description = `[${media.meta.playlist.name}](https://www.youtube.com/playlist?list=${media.url}) [${username}]`;
+      embed.setTitle("Playlist Queued");
+      embed.setDescription(`[${media.meta.playlist.name}](https://www.youtube.com/playlist?list=${media.url}) [${username}]`);
     } else {
       const meta = media.meta as IMetadata;
-      embed.title = 'Song Queued';
-      embed.description = `[${meta.title}](${media.url}) [${meta.queuedBy}]`;
+      embed.setTitle('Song Queued');
+      embed.setDescription(`[${meta.title}](${media.url}) [${meta.queuedBy}]`);
     }
 
     return [mediaError, embed];
@@ -588,14 +591,14 @@ export abstract class Voice {
         }
       }
 
-      server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1].setTitle(mediaStatus[1].title + ` — ${server.queue.getQueue().length + extraLength} Songs in Queue`)] }));
+      server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1].setTitle(mediaStatus[1].data.title + ` — ${server.queue.getQueue().length + extraLength} Songs in Queue`)] }));
     }
 
     return media;
   }
 
   private async handleDetermineMediaTypeError(err, interaction) {
-    if (err instanceof MessageEmbed) {
+    if (err instanceof EmbedBuilder) {
       interaction.editReply({ embeds: [err] });
     } else {
       throw err;

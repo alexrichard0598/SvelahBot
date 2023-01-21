@@ -1,37 +1,41 @@
+import { importx } from "@discordx/importer";
 import { Client } from "discordx";
-import { Intents } from "discord.js";
 import { config as configDotenv } from "dotenv";
-import * as Path from "path";
 import { resolve } from "path/posix";
 import { log } from "./logging";
+import { GatewayIntentBits, Interaction, Partials } from "discord.js";
 
 let client: Client;
 
 async function start() {
   try {
+    await importx(`${__dirname}/{commands,model,guards}/*.{ts,js}`);
+
     configDotenv({
       path: resolve(__dirname, "../env/env.variables"),
     });
 
     client = new Client({
-      classes: [
-        Path.join(__dirname, "commands", "*.{ts,js}"),
-        Path.join(__dirname, "guards", "*.{ts,js}"),
-        Path.join(__dirname, "model", "*.{ts,js}"),
-      ],
       silent: false,
+      partials: [
+        Partials.Channel,
+        Partials.Message,
+        Partials.Reaction,
+        Partials.User,
+        Partials.GuildMember,
+      ],
       intents: [
-        Intents.FLAGS.GUILDS,
-        Intents.FLAGS.GUILD_MESSAGES,
-        Intents.FLAGS.GUILD_VOICE_STATES,
-        Intents.FLAGS.GUILD_EMOJIS_AND_STICKERS,
-        Intents.FLAGS.DIRECT_MESSAGE_REACTIONS,
-        Intents.FLAGS.DIRECT_MESSAGES,
-        Intents.FLAGS.DIRECT_MESSAGE_TYPING,
-        Intents.FLAGS.GUILD_INTEGRATIONS,
-        Intents.FLAGS.GUILD_WEBHOOKS,
-        Intents.FLAGS.GUILD_INVITES,
-        Intents.FLAGS.GUILD_BANS,
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.GuildEmojisAndStickers,
+        GatewayIntentBits.DirectMessageReactions,
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.DirectMessageTyping,
+        GatewayIntentBits.GuildIntegrations,
+        GatewayIntentBits.GuildWebhooks,
+        GatewayIntentBits.GuildInvites,
+        GatewayIntentBits.GuildBans,
       ],
       botGuilds: process.env.DEV == "true" ? ["664999986974687242"] : undefined,
       presence: process.env.DEV == "true" ? { status: "dnd", activities: [{ name: "Bot is underdevlopment" }] } : { status: "online", activities: [{ name: "" }] },
@@ -47,7 +51,7 @@ async function start() {
       await client.initApplicationCommands();
     });
 
-    client.on("interactionCreate", async (interaction) => {
+    client.on("interactionCreate", async (interaction: Interaction) => {
       try {
         client.executeInteraction(interaction);
       } catch (error) {
