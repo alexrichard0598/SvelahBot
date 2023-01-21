@@ -270,24 +270,31 @@ export abstract class SharedMethods {
     }
 
     public static async nowPlayingMessage(server: VolfbotServer): Promise<EmbedBuilder> {
-        if (server.audioPlayer.state.status !== AudioPlayerStatus.Playing) return;
         const nowPlaying: PlayableResource = await server.queue.currentItem();
-        if (nowPlaying == undefined) return null;
-        const metadata: Metadata = nowPlaying.meta;
-        let playbackDuration = server.audioPlayer.state.playbackDuration;
-        const durationString = `${new Date(playbackDuration).getMinutes()}:${('0' + new Date(playbackDuration).getSeconds()).slice(-2)}`;
-        const length = metadata.length;
-        const lengthString = `${new Date(length).getMinutes()}:${('0' + new Date(length).getSeconds()).slice(-2)}`;
-        const percPlayed: number = Math.ceil((playbackDuration / length) * 100);
-        let msg = `[${metadata.title}](${nowPlaying.url}) [${metadata.queuedBy}]\n\n`;
-        for (let i = 0; i < 33; i++) {
-            if (percPlayed / 3 >= i) {
-                msg += '█';
-            } else {
-                msg += '░';
-            }
+        let embed: EmbedBuilder;
+        if (server.audioPlayer.state.status !== AudioPlayerStatus.Playing) {
+            embed = new EmbedBuilder().setTitle("Now Playing").setDescription(" ");
         }
-        msg += ` [${durationString}/${lengthString}]`;
-        return new EmbedBuilder().setTitle("Now Playing").setDescription(msg);
+        else if (nowPlaying == undefined) {
+            embed =  new EmbedBuilder().setTitle("Now Playing").setDescription(" ");
+        } else {
+            const metadata: Metadata = nowPlaying.meta;
+            let playbackDuration = server.audioPlayer.state.playbackDuration;
+            const durationString = `${new Date(playbackDuration).getMinutes()}:${('0' + new Date(playbackDuration).getSeconds()).slice(-2)}`;
+            const length = metadata.length;
+            const lengthString = `${new Date(length).getMinutes()}:${('0' + new Date(length).getSeconds()).slice(-2)}`;
+            const percPlayed: number = Math.ceil((playbackDuration / length) * 100);
+            let msg = `[${metadata.title}](${nowPlaying.url}) [${metadata.queuedBy}]\n\n`;
+            for (let i = 0; i < 33; i++) {
+                if (percPlayed / 3 >= i) {
+                    msg += '█';
+                } else {
+                    msg += '░';
+                }
+            }
+            msg += ` [${durationString}/${lengthString}]`;
+            embed = new EmbedBuilder().setTitle("Now Playing").setDescription(msg);
+        }
+        return embed;
     }
 }

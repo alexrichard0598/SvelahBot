@@ -37,16 +37,16 @@ export class VolfbotServer {
     this.audioPlayer.play(await media.getResource());
   }
 
-  @On({event: "messageDelete"}) 
+  @On({ event: "messageDelete" })
   async trackDeletedMessages(message) {
     const messageID = message.id;
-    if(this.messages.status !== undefined && messageID == this.messages.status.id) {
+    if (this.messages.status !== undefined && messageID == this.messages.status.id) {
       this.messages.status = undefined;
     }
-    if(this.messages.nowplaying !== undefined && messageID == this.messages.nowplaying.id) {
+    if (this.messages.nowplaying !== undefined && messageID == this.messages.nowplaying.id) {
       this.messages.nowplaying = undefined;
     }
-    if(this.messages.queue !== undefined && messageID == this.messages.queue.id) {
+    if (this.messages.queue !== undefined && messageID == this.messages.queue.id) {
       this.messages.queue = undefined;
     }
   }
@@ -63,10 +63,6 @@ export class VolfbotServer {
   }
 
   async updateNowPlayingMessage(msg) {
-    if (msg instanceof Message) msg.fetch();
-    let nowPlayingClockActive = this.nowPlayingClock !== undefined;
-    if (nowPlayingClockActive) clearInterval(this.nowPlayingClock);
-
     if (this.messages.nowplaying != undefined) {
       const nowplaying: Message = this.messages.nowplaying.channel.messages.resolve(this.messages.status.id);
       if (nowplaying != null) {
@@ -75,8 +71,6 @@ export class VolfbotServer {
     }
 
     if (msg instanceof Message) this.messages.nowplaying = msg;
-
-    if (nowPlayingClockActive) this.updatingNowPlayingMessage();
   }
 
   async updateQueueMessage(msg) {
@@ -159,8 +153,6 @@ export class VolfbotServer {
       if (this.queue.hasMedia()) {
         const currentItem = await this.queue.currentItem();
         this.playSong(currentItem);
-        const meta = currentItem.meta as IMetadata;
-        embed.setDescription(`Now playing [${meta.title}](${currentItem.url}) [${meta.queuedBy}]`);
       } else {
         this.autoDisconnect();
       }
@@ -170,10 +162,9 @@ export class VolfbotServer {
       if (this.queue.hasMedia()) {
         const currentItem = await this.queue.currentItem();
         this.playSong(currentItem);
-        const meta = currentItem.meta as IMetadata;
-        embed.setDescription(`Now playing [${meta.title}](${currentItem.url}) [${meta.queuedBy}]`);
       } else {
         embed.setDescription("Reached end of queue, stoped playing");
+        clearInterval(this.nowPlayingClock);
         this.autoDisconnect();
       }
     }
@@ -212,11 +203,23 @@ export class VolfbotServer {
     this.nowPlayingClock = setInterval(async () => {
       if (this.messages.nowplaying !== undefined) {
         const channel = await this.guild.channels.fetch(this.messages.nowplaying.channelId);
-        if (channel.isTextBased) {
-          const nowPlayingMessage = await (channel as TextBasedChannel).messages.fetch(this.messages.nowplaying.id);
-          if (nowPlayingMessage.editable && nowPlayingMessage) {
-            const embed = await SharedMethods.nowPlayingMessage(this);
-            this.messages.nowplaying = await nowPlayingMessage.edit({ embeds: [embed] }); 
+        if (channel.isTextBased()) {
+          const embed = await SharedMethods.nowPlayingMessage(this);
+          try {
+            const nowPlayingMessage = await this.messages.nowplaying.fetch();
+            if (nowPlayingMessage.editable) { 
+              this.messages.nowplaying = await nowPlayingMessage.edit({ embeds: [embed] });
+            } else if(nowPlayingMessage.deletable) {
+              this.updateNowPlayingMessage(await this.lastChannel.send({ embeds: [embed] }))
+            } else {
+              this.messages.nowplaying = await this.lastChannel.send({ embeds: [embed] });
+            }
+          } catch (error) {
+            if (error.name !== "DiscordAPIError[10008]") {
+              throw error;
+            } else {
+              this.messages.nowplaying = await this.lastChannel.send({ embeds: [embed] });
+            }
           }
         }
       }
