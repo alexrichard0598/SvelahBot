@@ -1,6 +1,6 @@
 import path = require("path");
 import { AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection } from "@discordjs/voice";
-import { CommandInteraction, Guild, Message, EmbedBuilder, TextBasedChannel, TextChannel, userMention } from "discord.js";
+import { CommandInteraction, Guild, Message, EmbedBuilder, TextBasedChannel, TextChannel, userMention, channelMention } from "discord.js";
 import { VolfbotServer } from "../model/VolfbotServer";
 import { log } from "../logging"
 import * as youtubeSearch from "youtube-search";
@@ -252,11 +252,14 @@ export abstract class SharedMethods {
     public static async nowPlayingEmbed(server: VolfbotServer): Promise<EmbedBuilder> {
         const nowPlaying: PlayableResource = await server.queue.currentItem();
         let embed: EmbedBuilder;
+        let nowPlayingTitle = `Now Playing`;
+        let nowPlayingDescription = `Playing in ${channelMention(server.lastVC.id)}\r\n\r\n`;
+
         if (server.audioPlayer.state.status !== AudioPlayerStatus.Playing) {
-            embed = new EmbedBuilder().setTitle("Now Playing").setDescription(" ");
+            embed = new EmbedBuilder().setTitle(nowPlayingTitle).setDescription(" ");
         }
         else if (nowPlaying == undefined) {
-            embed = new EmbedBuilder().setTitle("Now Playing").setDescription(" ");
+            embed = new EmbedBuilder().setTitle(nowPlayingTitle).setDescription(" ");
         } else {
             const metadata: Metadata = nowPlaying.meta;
             let playbackDuration = server.audioPlayer.state.playbackDuration;
@@ -286,7 +289,7 @@ export abstract class SharedMethods {
                 }
             }
             msg += ` [${durationString}/${lengthString}]`;
-            embed = new EmbedBuilder().setTitle("Now Playing").setDescription(msg);
+            embed = new EmbedBuilder().setTitle(nowPlayingTitle).setDescription(nowPlayingDescription + msg);
         }
         return embed;
     }
