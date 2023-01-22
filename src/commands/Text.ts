@@ -21,7 +21,6 @@ export abstract class HelloWorld {
 
       const data = fs.readFileSync('./src/data/known_users.json', { encoding: 'utf-8' });
       const knownUsers: Array<KnownUser> = await JSON.parse(data).known_users;
-      console.log(knownUsers);
 
       const knownUser = knownUsers.find(u => u.userId == interaction.user.id);
 

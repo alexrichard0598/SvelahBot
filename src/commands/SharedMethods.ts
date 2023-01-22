@@ -269,7 +269,7 @@ export abstract class SharedMethods {
         }
     }
 
-    public static async nowPlayingMessage(server: VolfbotServer): Promise<EmbedBuilder> {
+    public static async nowPlayingEmbed(server: VolfbotServer): Promise<EmbedBuilder> {
         const nowPlaying: PlayableResource = await server.queue.currentItem();
         let embed: EmbedBuilder;
         if (server.audioPlayer.state.status !== AudioPlayerStatus.Playing) {

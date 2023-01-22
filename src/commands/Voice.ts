@@ -1,7 +1,6 @@
 import { Client, Discord, On, Slash, SlashOption } from "discordx";
 import {
   CommandInteraction,
-  Message,
   EmbedBuilder,
   VoiceBasedChannel,
   VoiceState,
@@ -70,7 +69,6 @@ export abstract class Voice {
     try {
       const server = await this.initCommand({ interaction: interaction });
 
-      const embed = new EmbedBuilder(); // create message embed
       const queue = server.queue; // get the server's queue
       const audioPlayer = server.audioPlayer; // get the server's audioPlayer
       let connection = getVoiceConnection(interaction.guildId); // get the current voice connection
@@ -407,7 +405,7 @@ export abstract class Voice {
       if (!server.queue.hasMedia()) {
         interaction.editReply({ embeds: [new EmbedBuilder().setDescription("No songs are currently queued")] })
       } else if (nowPlaying.meta instanceof Metadata) {
-        interaction.editReply({ embeds: [await SharedMethods.nowPlayingMessage(server)] });
+        interaction.editReply({ embeds: [await SharedMethods.nowPlayingEmbed(server)] });
       } else {
         interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Could not get currently playing song")] });
       }

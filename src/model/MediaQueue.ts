@@ -1,6 +1,5 @@
 import { SharedMethods } from "../commands/SharedMethods";
 import { PlayableResource } from "./YouTube";
-import { MediaType } from "./MediaType";
 import { createHash } from "crypto";
 import { Metadata } from "./Metadata";
 import { VolfbotServer } from "./VolfbotServer";
