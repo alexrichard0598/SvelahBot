@@ -5,7 +5,7 @@ import { VolfbotServer } from "../model/VolfbotServer";
 import { log } from "../logging"
 import * as youtubeSearch from "youtube-search";
 import * as youtubeDL from "youtube-dl-exec"
-const ytdl = youtubeDL.create("ytdlp");
+const ytdl = youtubeDL.create("/bin/ytdlp");
 import { IMetadata, Metadata } from "../model/Metadata";
 import { MediaQueue } from "../model/MediaQueue";
 import { MediaType } from "../model/MediaType";
