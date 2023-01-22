@@ -53,15 +53,15 @@ export abstract class Text {
     }
   }
 
-  @Slash({name: "test-error",  description: "Throws a test error" })
-  async testError(interaction: CommandInteraction) {
-    try {
-      await interaction.deferReply();
-      const server = await SharedMethods.getServer(interaction.guild);
-      server.lastChannel = interaction.channel;
-      throw new Error("This is a test error");
-    } catch (error) {
-      SharedMethods.handleError(error, interaction.guild);
-    }
-  }
+  // // @Slash({name: "test-error",  description: "Throws a test error" })
+  // // async testError(interaction: CommandInteraction) {
+  // //   try {
+  // //     await interaction.deferReply();
+  // //     const server = await SharedMethods.getServer(interaction.guild);
+  // //     server.lastChannel = interaction.channel;
+  // //     throw new Error("This is a test error");
+  // //   } catch (error) {
+  // //     SharedMethods.handleError(error, interaction.guild);
+  // //   }
+  // // }
 }
