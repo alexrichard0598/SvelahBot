@@ -176,19 +176,13 @@ export class VolfbotServer {
 
   private async playerIdle() {
     const embed = new EmbedBuilder();
+      let wasPlayingSystemSound = this.playingSystemSound.valueOf();
 
     if (this.playingSystemSound) {
       this.playingSystemSound = false;
-      if (await this.queue.hasMedia()) {
-        const currentItem = await this.queue.currentItem();
-        if (currentItem) {
-          this.playSong(currentItem);
-        }
       } else {
-        this.autoDisconnect();
-      }
-    } else {
       await this.queue.dequeue();
+      }
 
       if (await this.queue.hasMedia()) {
         const currentItem = await this.queue.currentItem();
@@ -196,11 +190,10 @@ export class VolfbotServer {
           this.playSong(currentItem);
         }
       } else {
-        embed.setDescription("Reached end of queue, stoped playing");
+        if (!wasPlayingSystemSound) embed.setDescription("Reached end of queue, stoped playing");
         clearInterval(this.nowPlayingClock);
         this.autoDisconnect();
       }
-    }
 
     if (typeof (embed.data.description) === "string") {
       this.updateNowPlayingMessage(await this.lastChannel.send({ embeds: [embed] }));
