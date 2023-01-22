@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import { KnownUser } from "../model/KnownUsers";
 
 @Discord()
-export abstract class HelloWorld {
+export abstract class Text {
   @Slash({name: "hello", description: "A hello world message" })
   async hello(interaction: CommandInteraction): Promise<void> {
     interaction.reply("Hello world!").catch((err) => {
@@ -34,7 +34,7 @@ export abstract class HelloWorld {
         });
       }
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
@@ -42,14 +42,26 @@ export abstract class HelloWorld {
   async clear(interaction: CommandInteraction): Promise<void> {
     try {
       await interaction.deferReply();
-      const server = SharedMethods.getServer(interaction.guild);
-      (await server).lastChannel = interaction.channel;
+      const server = await SharedMethods.getServer(interaction.guild);
+      server.lastChannel = interaction.channel;
       const deleting = await interaction.fetchReply();
       const messages = await SharedMethods.retrieveBotMessages(interaction.channel, [deleting.id]);
 
       SharedMethods.clearMessages(messages, interaction);
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
+    }
+  }
+
+  @Slash({name: "test-error",  description: "Throws a test error" })
+  async testError(interaction: CommandInteraction) {
+    try {
+      await interaction.deferReply();
+      const server = await SharedMethods.getServer(interaction.guild);
+      server.lastChannel = interaction.channel;
+      throw new Error("This is a test error");
+    } catch (error) {
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 }

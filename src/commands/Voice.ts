@@ -33,7 +33,7 @@ export abstract class Voice {
       interaction.editReply({ embeds: [await server.connectBot(interaction)] }); // Join the vc
       server.lastChannel = interaction.channel; // set the last replied channel
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
@@ -56,7 +56,7 @@ export abstract class Voice {
         interaction.editReply("Disconnected 👋");
       }
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
@@ -100,7 +100,7 @@ export abstract class Voice {
         }
       }
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
@@ -156,7 +156,7 @@ export abstract class Voice {
         server.playSong(currentItem);
       }
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
@@ -180,7 +180,7 @@ export abstract class Voice {
       }
 
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
@@ -196,7 +196,7 @@ export abstract class Voice {
         interaction.editReply("Queue cleared");
       }
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
@@ -219,7 +219,7 @@ export abstract class Voice {
       interaction.editReply({ embeds: [embed] });
 
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
@@ -241,7 +241,7 @@ export abstract class Voice {
       }
       interaction.editReply({ embeds: [embed] });
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
@@ -263,7 +263,7 @@ export abstract class Voice {
         );
       }
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
@@ -329,7 +329,7 @@ export abstract class Voice {
 
       interaction.editReply({ embeds: [embed] });
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
@@ -367,7 +367,7 @@ export abstract class Voice {
 
       interaction.editReply({ embeds: [embed] });
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
@@ -379,7 +379,7 @@ export abstract class Voice {
       server.queue.loopQueue();
       interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Queue will loop until stoped\n(use /end-loop to stop looping)")] });
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
@@ -392,7 +392,7 @@ export abstract class Voice {
       server.queue.endLoop();
       interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Queue will no longer loop")] });
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
@@ -411,7 +411,7 @@ export abstract class Voice {
         interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Could not get currently playing song")] });
       }
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
@@ -427,7 +427,7 @@ export abstract class Voice {
         interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Queue shuffled")] });
       }
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
@@ -457,7 +457,7 @@ export abstract class Voice {
         interaction.editReply({ embeds: [new EmbedBuilder().setDescription(`${song.meta.title} at queue position ${index} removed`)] });
       }
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
@@ -486,23 +486,27 @@ export abstract class Voice {
 
       interaction.editReply({ embeds: [new EmbedBuilder().setDescription(msg).setTitle("Current Status")] });
     } catch (error) {
-      SharedMethods.handleErr(error, interaction.guild);
+      SharedMethods.handleError(error, interaction.guild);
     }
   }
 
   @On({ event: "voiceStateUpdate" })
   async voiceStatusUpdate(voiceStates: [oldState: VoiceState, newState: VoiceState], _client: Client) {
-    const botUserId = "698214544560095362";
-    const server = await SharedMethods.getServer(voiceStates[0].guild);
-    const bot = await server.guild.members.fetch(botUserId);
-    const channel = bot.voice.channel;
+    try {
+      const botUserId = "698214544560095362";
+      const server = await SharedMethods.getServer(voiceStates[0].guild);
+      const bot = await server.guild.members.fetch(botUserId);
+      const channel = bot.voice.channel;
 
-    if (channel != null) {
-      if (channel.members.filter(m => !m.user.bot).size == 0) {
-        server.disconnectBot();
+      if (channel != null) {
+        if (channel.members.filter(m => !m.user.bot).size == 0) {
+          server.disconnectBot();
+        }
+      } else if (server.queue.hasMedia()) {
+        server.queue.clear();
       }
-    } else if (server.queue.hasMedia()) {
-      server.queue.clear();
+    } catch (error) {
+      SharedMethods.handleError(error, voiceStates[0].guild);
     }
   }
 

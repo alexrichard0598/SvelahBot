@@ -1,6 +1,6 @@
 import path = require("path");
 import { AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection } from "@discordjs/voice";
-import { CommandInteraction, Guild, Message, EmbedBuilder, TextBasedChannel, TextChannel } from "discord.js";
+import { CommandInteraction, Guild, Message, EmbedBuilder, TextBasedChannel, TextChannel, userMention } from "discord.js";
 import { VolfbotServer } from "../model/VolfbotServer";
 import { log } from "../logging"
 import * as youtubeSearch from "youtube-search";
@@ -13,6 +13,7 @@ import { BotStatus } from "../model/BotStatus";
 import { YouTubePlaylist, PlayableResource } from "../model/PlayableResource";
 import { YouTubeSearchOptions, YouTubeSearchPageResults, YouTubeSearchResults } from "youtube-search";
 import moment = require("moment");
+import { getClient } from "../app";
 
 
 export abstract class SharedMethods {
@@ -61,7 +62,7 @@ export abstract class SharedMethods {
             }
             return foundServer;
         } catch (error) {
-            this.handleErr(error, guild);
+            this.handleError(error, guild);
         }
     }
 
@@ -77,14 +78,18 @@ export abstract class SharedMethods {
         }
     }
 
-    public static async handleErr(err, guild: Guild) {
+    public static async handleError(error: Error, guild: Guild) {
         const embed = new EmbedBuilder();
         const server = await this.getServer(guild);
         embed.setTitle("Error!");
-        embed.setDescription(`${err.message}\r\n\`\`\`${err.stack}\`\`\`\r\n**Please let the developer know**`);
-        if (server.lastChannel !== undefined)
-            server.lastChannel.send({ embeds: [embed] });
-        console.log(err);
+        embed.setDescription(`${error.message}\r\n\`\`\`${error.stack}\`\`\`\r\n**Please let the developer know**`);
+        if (server.lastChannel !== undefined) server.lastChannel.send({ embeds: [embed] });
+        log.error(error);
+
+        embed.setDescription(embed.data.description);
+
+        const botDevChannel = (await (await getClient().guilds.fetch('664999986974687242')).channels.fetch('888174462011342848')) as TextBasedChannel;
+        botDevChannel.send({embeds: [embed], content: userMention('134131441175887872')});
     }
 
     public static async searchYoutube(search: string, server: VolfbotServer): Promise<string> {

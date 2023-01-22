@@ -35,23 +35,13 @@ export class VolfbotServer {
   }
 
   async playSong(media: PlayableResource) {
-    let resource = await media.getResource();
-    this.audioPlayer.play(resource);
+    try {
+      let resource = await media.getResource();
+      this.audioPlayer.play(resource);
+    } catch (error) {
+      SharedMethods.handleError(error, this.guild);
+    }
   }
-
-  // // @On({ event: "messageDelete" })
-  // // async trackDeletedMessages(message) {
-  // //   const messageID = message.id;
-  // //   if (this.messages.status !== undefined && messageID == this.messages.status.id) {
-  // //     this.messages.status = undefined;
-  // //   }
-  // //   if (this.messages.nowplaying !== undefined && messageID == this.messages.nowplaying.id) {
-  // //     this.messages.nowplaying = undefined;
-  // //   }
-  // //   if (this.messages.queue !== undefined && messageID == this.messages.queue.id) {
-  // //     this.messages.queue = undefined;
-  // //   }
-  // // }
 
   async updateStatusMessage(msg: Message) {
     try {
@@ -65,7 +55,7 @@ export class VolfbotServer {
       if (msg instanceof Message) this.messages.status = msg;
     } catch (error) {
       if (error.name !== "DiscordAPIError[10008]") {
-        throw error;
+        SharedMethods.handleError(error, this.guild);
       } else {
         log.warn("Failed to delete status message");
       }
@@ -86,7 +76,7 @@ export class VolfbotServer {
       if (msg instanceof Message) this.messages.nowplaying = msg;
     } catch (error) {
       if (error.name !== "DiscordAPIError[10008]") {
-        throw error;
+        SharedMethods.handleError(error, this.guild);
       } else {
         log.warn("Failed to delete now playing message");
       }
@@ -105,7 +95,7 @@ export class VolfbotServer {
       if (msg instanceof Message) this.messages.queue = msg;
     } catch (error) {
       if (error.name !== "DiscordAPIError[10008]") {
-        throw error;
+        SharedMethods.handleError(error, this.guild);
       } else {
         log.warn("Failed to delete queue message");
       }
@@ -114,74 +104,83 @@ export class VolfbotServer {
   }
 
   async disconnectBot(excludedMessages: string[] = []) {
-    this.queue.clear();
-    clearInterval(this.nowPlayingClock);
-    clearTimeout(this.disconnectTimer);
-    let stream = fs.createReadStream('./src/assets/sounds/volfbot-disconnect.ogg');
-    const sound = createAudioResource(stream);
-    const connection = getVoiceConnection(this.guild.id);
+    try {
+      this.queue.clear();
+      clearInterval(this.nowPlayingClock);
+      clearTimeout(this.disconnectTimer);
+      let stream = fs.createReadStream('./src/assets/sounds/volfbot-disconnect.ogg');
+      const sound = createAudioResource(stream);
+      const connection = getVoiceConnection(this.guild.id);
 
-    if (connection) {
-      if (!this.audioPlayer.playable.includes(connection)) {
-        connection.subscribe(this.audioPlayer);
-      }
-
-      this.audioPlayer.on("stateChange", (_oldState, newState) => {
-        if (newState.status == AudioPlayerStatus.Idle
-          && connection.state.status !== VoiceConnectionStatus.Disconnected
-          && connection.state.status !== VoiceConnectionStatus.Destroyed) {
-          connection.disconnect();
-          connection.destroy();
+      if (connection) {
+        if (!this.audioPlayer.playable.includes(connection)) {
+          connection.subscribe(this.audioPlayer);
         }
-      });
 
-      const deleting = await this.lastChannel.send("Cleaning up after disconnect");
-      this.playingSystemSound = true;
-      let playableResource = new PlayableResource(this);
-      this.playSong(await playableResource.setResource(sound));
+        this.audioPlayer.on("stateChange", (_oldState, newState) => {
+          if (newState.status == AudioPlayerStatus.Idle
+            && connection.state.status !== VoiceConnectionStatus.Disconnected
+            && connection.state.status !== VoiceConnectionStatus.Destroyed) {
+            connection.disconnect();
+            connection.destroy();
+          }
+        });
 
-      if (this.lastChannel) {
-        SharedMethods.clearMessages(await SharedMethods.retrieveBotMessages(this.lastChannel, excludedMessages.concat(deleting.id)));
+        const deleting = await this.lastChannel.send("Cleaning up after disconnect");
+        this.playingSystemSound = true;
+        let playableResource = new PlayableResource(this);
+        this.playSong(await playableResource.setResource(sound));
+
+        if (this.lastChannel) {
+          SharedMethods.clearMessages(await SharedMethods.retrieveBotMessages(this.lastChannel, excludedMessages.concat(deleting.id)));
+        }
       }
+    } catch (error) {
+      SharedMethods.handleError(error, this.guild);
     }
   }
 
   async connectBot(interaction: CommandInteraction): Promise<EmbedBuilder> {
-    this.lastChannel = interaction.channel;
-    const guildMember = await this.guild.members.fetch(
-      interaction.user
-    );
-    const embed = new EmbedBuilder;
-    const vc: VoiceBasedChannel = guildMember.voice.channel;
-    const audioPlayer = this.audioPlayer;
+    try {
+      this.lastChannel = interaction.channel;
+      const guildMember = await this.guild.members.fetch(
+        interaction.user
+      );
+      const embed = new EmbedBuilder;
+      const vc: VoiceBasedChannel = guildMember.voice.channel;
+      const audioPlayer = this.audioPlayer;
 
-    if (vc === null) {
-      embed.setDescription("You are not part of a voice chat, please join a voice chat first.");
-    } else {
-      joinVoiceChannel({
-        channelId: vc.id,
-        guildId: vc.guildId,
-        adapterCreator: vc.guild.voiceAdapterCreator as unknown as DiscordGatewayAdapterCreator,
-      }).subscribe(audioPlayer);
-      embed.setDescription("Joined " + vc.name);
+      if (vc === null) {
+        embed.setDescription("You are not part of a voice chat, please join a voice chat first.");
+      } else {
+        joinVoiceChannel({
+          channelId: vc.id,
+          guildId: vc.guildId,
+          adapterCreator: vc.guild.voiceAdapterCreator as unknown as DiscordGatewayAdapterCreator,
+        }).subscribe(audioPlayer);
+        embed.setDescription("Joined " + vc.name);
+      }
+
+      let stream = fs.createReadStream('./src/assets/sounds/volfbot-connect.ogg');
+      const sound = createAudioResource(stream);
+      this.playingSystemSound = true;
+      let playableResource = new PlayableResource(this);
+      this.playSong(await playableResource.setResource(sound));
+      return embed;
+    } catch (error) {
+      SharedMethods.handleError(error, this.guild);
     }
-
-    let stream = fs.createReadStream('./src/assets/sounds/volfbot-connect.ogg');
-    const sound = createAudioResource(stream);
-    this.playingSystemSound = true;
-    let playableResource = new PlayableResource(this);
-    this.playSong(await playableResource.setResource(sound));
-    return embed;
   }
 
   private async playerIdle() {
-    const embed = new EmbedBuilder();
+    try {
+      const embed = new EmbedBuilder();
       let wasPlayingSystemSound = this.playingSystemSound.valueOf();
 
-    if (this.playingSystemSound) {
-      this.playingSystemSound = false;
+      if (this.playingSystemSound) {
+        this.playingSystemSound = false;
       } else {
-      await this.queue.dequeue();
+        await this.queue.dequeue();
       }
 
       if (await this.queue.hasMedia()) {
@@ -195,18 +194,26 @@ export class VolfbotServer {
         this.autoDisconnect();
       }
 
-    if (typeof (embed.data.description) === "string") {
-      this.updateNowPlayingMessage(await this.lastChannel.send({ embeds: [embed] }));
+      if (typeof (embed.data.description) === "string") {
+        this.updateNowPlayingMessage(await this.lastChannel.send({ embeds: [embed] }));
+      }
+    } catch (error) {
+      SharedMethods.handleError(error, this.guild);
     }
+
   }
 
   private async playerPlaying(oldState: AudioPlayerState) {
-    if (oldState.status == AudioPlayerStatus.Playing || this.playingSystemSound) return;
-    if (this.messages.nowplaying === undefined) {
-      const embed = await SharedMethods.nowPlayingEmbed(this);
-      this.createNowPlayingMessage(embed);
+    try {
+      if (oldState.status == AudioPlayerStatus.Playing || this.playingSystemSound) return;
+      if (this.messages.nowplaying === undefined) {
+        const embed = await SharedMethods.nowPlayingEmbed(this);
+        this.createNowPlayingMessage(embed);
+      }
+      this.nowPlayingClockFunction();
+    } catch (error) {
+      SharedMethods.handleError(error, this.guild);
     }
-    this.nowPlayingClockFunction();
   }
 
   private async autoDisconnect() {
