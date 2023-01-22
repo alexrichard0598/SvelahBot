@@ -1,5 +1,5 @@
 import { AudioPlayer, AudioPlayerState, AudioPlayerStatus, createAudioResource, DiscordGatewayAdapterCreator, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice";
-import { CommandInteraction, Guild, Message, EmbedBuilder, TextBasedChannel, VoiceBasedChannel } from "discord.js";
+import { CommandInteraction, Guild, Message, EmbedBuilder, TextBasedChannel, VoiceBasedChannel, channelMention } from "discord.js";
 import { SharedMethods } from "../commands/SharedMethods";
 import { MediaQueue } from "./MediaQueue";
 import { Messages } from "./Messages";
@@ -162,7 +162,7 @@ export class VolfbotServer {
           guildId: vc.guildId,
           adapterCreator: vc.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
         }).subscribe(audioPlayer);
-        embed.setDescription("Joined " + vc.name);
+        embed.setDescription(`Joined ${channelMention(vc.id)}`);
 
         this.setLastVC(vc);
       }
