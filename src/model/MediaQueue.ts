@@ -1,6 +1,4 @@
-import { SharedMethods } from "../commands/SharedMethods";
 import { PlayableResource } from "./PlayableResource";
-import { Metadata } from "./Metadata";
 import { ISong, Queue, QueueManager } from "../database/Queue";
 import { VolfbotServer } from "./VolfbotServer";
 

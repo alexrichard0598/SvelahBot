@@ -13,7 +13,7 @@ import {
 import { IMetadata, Metadata } from "../model/Metadata";
 import { SharedMethods } from "./SharedMethods";
 import { MediaType } from "../model/MediaType";
-import { PlayableResource, YouTubePlaylist } from "../model/PlayableResource";
+import { PlayableResource } from "../model/PlayableResource";
 import moment = require("moment");
 import momentDurationFormatSetup = require("moment-duration-format");
 momentDurationFormatSetup(moment);

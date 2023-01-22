@@ -5,7 +5,6 @@ import { MediaQueue } from "./MediaQueue";
 import { Messages } from "./Messages";
 import * as fs from 'fs';
 import { PlayableResource } from "./PlayableResource";
-import { Discord, On } from "discordx";
 
 export class VolfbotServer {
   guild: Guild;
@@ -87,6 +86,7 @@ export class VolfbotServer {
   }
 
   async disconnectBot(excludedMessages: string[] = []) {
+    //TODO: Determine where unknown message error comes from
     this.queue.clear();
     clearInterval(this.nowPlayingClock);
     clearTimeout(this.disconnectTimer);

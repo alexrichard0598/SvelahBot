@@ -1,6 +1,5 @@
 import { Discord, Slash } from "discordx";
 import { CommandInteraction, EmbedBuilder } from "discord.js";
-import { log } from "../logging";
 import * as fs from "fs";
 import * as path from "path";
 
