@@ -1,83 +1,97 @@
 import { SharedMethods } from "../commands/SharedMethods";
 import { PlayableResource } from "./YouTube";
-import { createHash } from "crypto";
 import { Metadata } from "./Metadata";
+import { ISong, Queue, QueueManager, Song } from "../database/Queue";
 import { VolfbotServer } from "./VolfbotServer";
+import { it } from "node:test";
 
 export class MediaQueue {
-  private queue: Array<PlayableResource>;
   private looping: boolean = false;
+  private currentSong: PlayableResource;
+  private server: VolfbotServer;
 
-  constructor() {
-    this.queue = new Array<PlayableResource>();
+  constructor(server: VolfbotServer) {
+    this.server = server;
   }
 
-  async enqueue(url: string, enqueuedBy: string, server: VolfbotServer, meta?: Metadata): Promise<PlayableResource> {
-    const video = new PlayableResource(url)
-    const hash = createHash("sha256");
-    hash.update(`${this.queue.length}${url}${Date.now()}`);
-    const id = hash.digest("hex");
-    video.id = id;
+  async enqueue(url: string, enqueuedBy: string, meta?: Metadata): Promise<PlayableResource> {
+    const video = new PlayableResource(this.server, url)
     video.meta = meta && meta.title !== "" ? meta : await SharedMethods.getMetadata(url, enqueuedBy, null);
     if (RegExp(/.*jurassic.*/, 'i').test(video.meta.title) && RegExp(/.*harmonica.*/, 'i').test(video.meta.title)) {
-      server.lastChannel.send("No.");
+      this.server.lastChannel.send("No.");
     } else if ((RegExp(/.*titanic.*/, 'i').test(video.meta.title) || (RegExp(/.*heart.*/, 'i').test(video.meta.title))) && (RegExp(/.*flute.*/, 'i').test(video.meta.title) || RegExp(/.*recorder.*/, 'i').test(video.meta.title))) {
-      server.lastChannel.send("No.");
+      this.server.lastChannel.send("No.");
     } else if (video.meta.title !== "") {
-      this.queue.push(video);
+      const song = video.toISong();
+      QueueManager.enqueueSongs([song]);
     }
 
     return video;
   }
 
   async dequeue(index: number = 1): Promise<void> {
-    const removedItems = this.queue.slice(0, index);
-    const keptItems = this.queue.slice(index);
-    if (this.looping) {
-      removedItems.forEach(i => i.getResource = undefined);
-      this.queue = keptItems.concat(removedItems);
-    } else {
-      this.queue = keptItems;
+    for (let i = 0; i < index; i++) {
+      let song = await QueueManager.dequeueSong(this.server.id);
+      if (this.looping) await QueueManager.enqueueSongs([song]);
+      this.currentSong = undefined;
     }
   }
 
-  clear(keepCurrentSong = false): void {
+  async clear(keepCurrentSong = false) {
+    let currentSong = await this.currentItem();
+    await QueueManager.clearQueue(this.server.id);
     if (keepCurrentSong) {
-      this.queue.splice(1, this.queue.length);
+      QueueManager.enqueueSongs([currentSong.toISong()]);
     } else {
-      this.queue.splice(0, this.queue.length);
       this.looping = false;
     }
   }
 
-  getQueue(): Array<PlayableResource> {
-    return Array.from(this.queue);
+  async getQueueCount(): Promise<number> {
+    return QueueManager.getQueueCount(this.server.id);
   }
 
-  setQueue(newQueue: Array<PlayableResource>): void {
-    this.queue = newQueue;
+  async getQueue(): Promise<PlayableResource[]> {
+    let queue = await QueueManager.getServerQueue(this.server.id);
+    return this.mediaQueueFromQueue(queue);
+  }
+
+  async setQueue(newQueue: Array<PlayableResource>) {
+    await this.clear();
+    let queue = new Array<ISong>();
+    newQueue.forEach(item => {
+      queue.push(item.toISong());
+    })
+    QueueManager.enqueueSongs(queue);
   }
 
   async getItem(id: string): Promise<PlayableResource> {
-    return this.queue.find(v => v.id == id);
+    throw new Error();
+    //return this.queue.find(v => v.id == id);
   }
 
   getItemAt(index: number): PlayableResource {
-    return this.queue[index];
+    throw new Error();
+    //return this.queue[index];
   }
 
   async getTotalLength(): Promise<number> {
     let length = 0;
-    this.queue.forEach(v => length += v.meta.length);
+    (await this.getQueue()).forEach(v => length += v.meta.length);
     return length;
   }
 
-  hasMedia(): boolean {
-    return this.queue.length != 0;
+  async hasMedia(): Promise<boolean> {
+    return (await QueueManager.getQueueCount(this.server.id)) != 0;
   }
 
-  async currentItem(): Promise<PlayableResource> {
-    return this.queue[0];
+  async currentItem(): Promise<PlayableResource | null> {
+    if (this.currentSong == undefined) {
+      let song = await QueueManager.getCurrentSong(this.server.id);
+      if(song == null) return null;
+      this.currentSong = await PlayableResource.parseFromISong(song);
+    }
+    return this.currentSong;
   }
 
   loopQueue(): void {
@@ -89,20 +103,32 @@ export class MediaQueue {
   }
 
   shuffle(): void {
-    let copyQueue = this.queue.slice(1);
-    let shuffledQueue = new Array<PlayableResource>();
-    shuffledQueue.push(this.queue[0]);
-    while (copyQueue.length > 0) {
-      const j = Math.floor(Math.random() * (copyQueue.length))
-      shuffledQueue.push(copyQueue[j]);
-      copyQueue = copyQueue.slice(0, j).concat(copyQueue.slice(j + 1));
-    }
+    throw new Error();
+    // let copyQueue = this.queue.slice(1);
+    // let shuffledQueue = new Array<PlayableResource>();
+    // shuffledQueue.push(this.queue[0]);
+    // while (copyQueue.length > 0) {
+    //   const j = Math.floor(Math.random() * (copyQueue.length))
+    //   shuffledQueue.push(copyQueue[j]);
+    //   copyQueue = copyQueue.slice(0, j).concat(copyQueue.slice(j + 1));
+    // }
 
-    this.queue = shuffledQueue;
+    // this.queue = shuffledQueue;
   }
 
   removeItemAt(i: number): void {
-    const newQueue = this.queue.slice(0, i).concat(this.queue.slice(i + 1));
-    this.queue = newQueue;
+    throw new Error();
+    // const newQueue = this.queue.slice(0, i).concat(this.queue.slice(i + 1));
+    // this.queue = newQueue;
+  }
+
+  private mediaQueueFromQueue(queue: Queue) {
+    let mediaQueue = new Array<PlayableResource>();
+    queue.forEach(async (song) => {
+      let media = await PlayableResource.parseFromISong(song);
+      mediaQueue.push(media);
+    });
+
+    return mediaQueue;
   }
 }

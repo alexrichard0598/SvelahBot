@@ -4,18 +4,18 @@ export interface IMetadata {
   title: string;
   length: number;
   queuedBy: string;
-  playlist: YouTubePlaylist;
+  playlist: YouTubePlaylist | null;
 }
 
 export class Metadata implements IMetadata {
   title: string;
   length: number;
   queuedBy: string;
-  playlist: YouTubePlaylist;
+  playlist: YouTubePlaylist | null;
 
   constructor() {
     this.title = "";
     this.length = 0;
-    this.playlist = new YouTubePlaylist();
+    this.playlist = null;
   }
 }
