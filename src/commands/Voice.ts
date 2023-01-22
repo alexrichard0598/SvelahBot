@@ -145,9 +145,9 @@ export abstract class Voice {
       if (media instanceof PlayableResource) {
         let tempQueue = new Array<PlayableResource>();
         tempQueue.push(media);
-        newQueue = tempQueue.concat(currentQueue);
+        newQueue = tempQueue.concat(await currentQueue);
       } else if (media instanceof Array<PlayableResource>) {
-        newQueue = media.concat(currentQueue);
+        newQueue = media.concat(await currentQueue);
       } else {
         return;
       }
@@ -191,7 +191,7 @@ export abstract class Voice {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
 
-      if (server.audioPlayer.state.status === AudioPlayerStatus.Idle) {
+      if ((await server.queue.getQueueCount()) == 0) {
         interaction.editReply("Nothing is currently queued");
       } else {
         server.queue.clear(true);
@@ -287,32 +287,33 @@ export abstract class Voice {
           ? "Now Playing"
           : "Current Queue";
 
-      let description = "";
+      let description = " ";
 
       if (queue.hasMedia()) {
-        const queuedSongs = queue.getQueue();
+        const queuedSongs = await queue.getQueue();
+        const queueCount = await queue.getQueueCount();
 
         const parsedInt = parseInt(page);
         let pageInt = 1;
-        if (!isNaN(parsedInt) && (parsedInt - 1) * 10 < queuedSongs.length && parsedInt > 1) {
+        if (!isNaN(parsedInt) && (parsedInt - 1) * 10 < queueCount && parsedInt > 1) {
           pageInt = parsedInt;
         }
 
-        if (queuedSongs.length > 9) {
-          title += ` — Page ${pageInt} of ${Math.ceil(queuedSongs.length / 10)}`
+        if (queueCount > 9) {
+          title += ` — Page ${pageInt} of ${Math.ceil(queueCount / 10)}`
           const queueLength = await queue.getTotalLength();
           title += ` — Total Duration: ${moment.duration(queueLength, "ms").format("d [days], h [hours], m [minutes], s [seconds]")}`;
-        } else if (queuedSongs.length > 1) {
+        } else if (queueCount > 1) {
           const queueLength = await queue.getTotalLength();
           title += ` — Total Duration: ${moment.duration(queueLength, "ms").format("d [days], h [hours], m [minutes], s [seconds]")}`;
         }
 
-        for (let i = Math.max((pageInt - 1) * 10 - 1, 0); i < queuedSongs.length; i++) {
+        for (let i = Math.max((pageInt - 1) * 10 - 1, 0); i < queueCount; i++) {
           const media = queuedSongs[i];
           const meta = media.meta as IMetadata;
           description += `\n${i + 1}. [${meta.title.slice(0, 256)}](${media.url}) [${meta.queuedBy}]`;
           if (i == pageInt * 10 - 1) {
-            const j = queuedSongs.length;
+            const j = queueCount;
             const endMedia = queuedSongs[j - 1];
             const endMeta = endMedia.meta as IMetadata;
             description += '\n...';
@@ -351,7 +352,7 @@ export abstract class Voice {
       if (!queue.hasMedia()) {
         embed.setDescription("No songs to skip");
       } else if (!isNaN(i)) {
-        const queueLength = queue.getQueue().length;
+        const queueLength = await queue.getQueueCount();
         if (queueLength < i) {
           embed.setDescription(`Only ${queueLength} songs in queue, cannot skip to song #${i} as no such song exists`);
         } else if (i == 1) {
@@ -404,7 +405,7 @@ export abstract class Voice {
       const server = await this.initCommand({ interaction: interaction, isNowPlayingMessage: true });
 
       const nowPlaying: PlayableResource = await server.queue.currentItem();
-      if (!server.queue.hasMedia()) {
+      if (!server.queue.hasMedia() || nowPlaying == null) {
         interaction.editReply({ embeds: [new EmbedBuilder().setDescription("No songs are currently queued")] })
       } else if (nowPlaying.meta instanceof Metadata) {
         interaction.editReply({ embeds: [await SharedMethods.nowPlayingMessage(server)] });
@@ -450,7 +451,7 @@ export abstract class Voice {
         server.queue.removeItemAt(index - 1);
         server.audioPlayer.stop();
         interaction.editReply({ embeds: [new EmbedBuilder().setDescription(`Currently playing song removed`)] });
-      } else if (index > server.queue.getQueue().length) {
+      } else if (index > await server.queue.getQueueCount()) {
         interaction.editReply({ embeds: [new EmbedBuilder().setDescription(`You entered a number larger than the number of queued songs`)] });
       } else {
         const song = server.queue.getItemAt(index - 1);
@@ -556,14 +557,14 @@ export abstract class Voice {
       media = await SharedMethods.createYoutubePlaylistResource(mediaType[1], interaction.user.username, server);
     } else if (mediaType[0] == MediaType.yt_video || mediaType[0] == MediaType.yt_search) {
       media = new Array<PlayableResource>();
-      let vid = new PlayableResource(mediaType[1]);
-      vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.username, new YouTubePlaylist());
+      let vid = new PlayableResource(server, mediaType[1]);
+      vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.username, new YouTubePlaylist("", 1, server));
       media.push(vid);
     }
 
     if (media !== undefined && queue) {
       media.forEach((video: PlayableResource) => {
-        server.queue.enqueue(video.url, video.meta.queuedBy, server, video.meta);
+        server.queue.enqueue(video.url, video.meta.queuedBy, video.meta);
       });
     }
 
@@ -591,7 +592,7 @@ export abstract class Voice {
         }
       }
 
-      server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1].setTitle(mediaStatus[1].data.title + ` — ${server.queue.getQueue().length + extraLength} Songs in Queue`)] }));
+      server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1].setTitle(mediaStatus[1].data.title + ` — ${(await server.queue.getQueueCount()) + extraLength} Songs in Queue`)] }));
     }
 
     return media;

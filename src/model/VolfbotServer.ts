@@ -15,15 +15,22 @@ export class VolfbotServer {
   audioPlayer: AudioPlayer;
   lastChannel: TextBasedChannel;
   messages: Messages;
+  id: number;
   private playingSystemSound = false;
   private disconnectTimer;
   private nowPlayingClock;
 
   constructor(guild: Guild) {
     this.guild = guild;
-    this.queue = new MediaQueue();
+    this.queue = new MediaQueue(this);
     this.messages = new Messages();
+    this.id = guild ? Number.parseInt(guild.id) : undefined;
     this.audioPlayer = new AudioPlayer();
+
+    this.audioPlayer.on("stateChange", (oldState, newState) => {
+      console.log(`Old State: ${oldState.status}; New State: ${newState.status}`);
+    })
+
     this.audioPlayer.on(AudioPlayerStatus.Idle, async () => {
       this.playerIdle();
     });
@@ -34,7 +41,8 @@ export class VolfbotServer {
   }
 
   async playSong(media: PlayableResource) {
-    this.audioPlayer.play(await media.getResource());
+    let resource = await media.getResource();
+    this.audioPlayer.play(resource);
   }
 
   @On({ event: "messageDelete" })
@@ -104,11 +112,11 @@ export class VolfbotServer {
           connection.disconnect();
           connection.destroy();
         }
-      })
+      });
 
       const deleting = await this.lastChannel.send("Cleaning up after disconnect");
       this.playingSystemSound = true;
-      let playableResource = new PlayableResource();
+      let playableResource = new PlayableResource(this);
       this.playSong(await playableResource.setResource(sound));
 
       if (this.lastChannel) {
@@ -140,7 +148,7 @@ export class VolfbotServer {
     let stream = fs.createReadStream('./src/assets/sounds/volfbot-connect.ogg');
     const sound = createAudioResource(stream);
     this.playingSystemSound = true;
-    let playableResource = new PlayableResource();
+    let playableResource = new PlayableResource(this);
     this.playSong(await playableResource.setResource(sound));
     return embed;
   }
@@ -150,18 +158,22 @@ export class VolfbotServer {
 
     if (this.playingSystemSound) {
       this.playingSystemSound = false;
-      if (this.queue.hasMedia()) {
+      if (await this.queue.hasMedia()) {
         const currentItem = await this.queue.currentItem();
-        this.playSong(currentItem);
+        if (currentItem) {
+          this.playSong(currentItem);
+        }
       } else {
         this.autoDisconnect();
       }
     } else {
       await this.queue.dequeue();
 
-      if (this.queue.hasMedia()) {
+      if (await this.queue.hasMedia()) {
         const currentItem = await this.queue.currentItem();
-        this.playSong(currentItem);
+        if (currentItem) {
+          this.playSong(currentItem);
+        }
       } else {
         embed.setDescription("Reached end of queue, stoped playing");
         clearInterval(this.nowPlayingClock);
@@ -207,9 +219,9 @@ export class VolfbotServer {
           const embed = await SharedMethods.nowPlayingMessage(this);
           try {
             const nowPlayingMessage = await this.messages.nowplaying.fetch();
-            if (nowPlayingMessage.editable) { 
+            if (nowPlayingMessage.editable) {
               this.messages.nowplaying = await nowPlayingMessage.edit({ embeds: [embed] });
-            } else if(nowPlayingMessage.deletable) {
+            } else if (nowPlayingMessage.deletable) {
               this.updateNowPlayingMessage(await this.lastChannel.send({ embeds: [embed] }))
             } else {
               this.messages.nowplaying = await this.lastChannel.send({ embeds: [embed] });

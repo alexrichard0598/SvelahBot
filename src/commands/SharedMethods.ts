@@ -5,7 +5,7 @@ import { VolfbotServer } from "../model/VolfbotServer";
 import { log } from "../logging"
 import * as youtubeSearch from "youtube-search";
 import * as youtubeDL from "youtube-dl-exec"
-const ytdl = youtubeDL.create("/bin/ytdlp");
+const ytdl = youtubeDL.create("ytdlp");
 import { IMetadata, Metadata } from "../model/Metadata";
 import { MediaQueue } from "../model/MediaQueue";
 import { MediaType } from "../model/MediaType";
@@ -181,17 +181,13 @@ export abstract class SharedMethods {
             const meta = new Metadata();
             meta.title = vid.title;
             meta.length = vid.duration * 1000;
-            meta.playlist = new YouTubePlaylist(title, result.entries.length);
+            meta.playlist = new YouTubePlaylist(title, result.entries.length, server);
             meta.queuedBy = enqueuedBy;
 
-            playlist.push(new PlayableResource(url, meta));
+            playlist.push(new PlayableResource(server, url, meta));
         }
 
         return playlist;
-    }
-
-    public static async createSpotifyResource(_uri: string, _enqueuedBy: string, _server: VolfbotServer): Promise<PlayableResource> {
-        throw new Error("Method not implemented.");
     }
 
     public static async determineMediaType(url: string, server?: VolfbotServer): Promise<[MediaType, string]> {
@@ -223,19 +219,6 @@ export abstract class SharedMethods {
             } else if (new RegExp(/^[A-Za-z0-9-_]{34}$/).test(url)) {
                 mediaType = MediaType.yt_playlist;
                 url = "https://www.youtube.com/playlist?list=" + url;
-                //} else if (new RegExp(/spotify/).test(url)) {
-                //url = spotifyUri.formatURI(spotifyUri.parse(url));
-                //switch (url.split(":")[1]) {
-                //    case "track":
-                //        mediaType = MediaType.spotify_track;
-                //        break;
-                //    case "playlist":
-                //        mediaType = MediaType.spotify_playlist;
-                //        break;
-                //    default:
-                //        mediaType = MediaType.unknown;
-                //        break;
-                //}
             } else if (server != undefined) {
                 mediaType = MediaType.yt_search;
                 let id = await this.searchYoutube(url, server).catch(err => {
