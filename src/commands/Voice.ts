@@ -31,7 +31,7 @@ export abstract class Voice {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
 
       interaction.editReply({ embeds: [await server.connectBot(interaction)] }); // Join the vc
-      server.lastChannel = interaction.channel; // set the last replied channel
+      server.setLastChannel(interaction.channel); // set the last replied channel
     } catch (error) {
       SharedMethods.handleError(error, interaction.guild);
     }
@@ -43,7 +43,7 @@ export abstract class Voice {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
       const connection = getVoiceConnection(interaction.guildId); // get the current voice connection
-      server.lastChannel = interaction.channel; // set the last replied channel
+      server.setLastChannel(interaction.channel); // set the last replied channel
 
       /* Checks if the bot is in a voice channel
        * if yes disconnect and then reply
@@ -207,7 +207,7 @@ export abstract class Voice {
 
       const embed = new EmbedBuilder();
       const audioPlayer = server.audioPlayer;
-      server.lastChannel = interaction.channel;
+      server.setLastChannel(interaction.channel);
       if (audioPlayer.state.status === AudioPlayerStatus.Paused) {
         audioPlayer.unpause();
         embed.setDescription("Resumed queue");
@@ -230,7 +230,7 @@ export abstract class Voice {
 
       const embed = new EmbedBuilder();
       const audioPlayer = server.audioPlayer;
-      server.lastChannel = interaction.channel;
+      server.setLastChannel(interaction.channel);
       if (audioPlayer.state.status === AudioPlayerStatus.Playing) {
         audioPlayer.pause();
         embed.setDescription("Paused playback");
@@ -277,7 +277,7 @@ export abstract class Voice {
 
       const queue = server.queue;
       const audioPlayer = server.audioPlayer;
-      server.lastChannel = interaction.channel;
+      server.setLastChannel(interaction.channel);
 
       const embed = new EmbedBuilder();
       let title =
@@ -501,6 +501,8 @@ export abstract class Voice {
       if (channel != null) {
         if (channel.members.filter(m => !m.user.bot).size == 0) {
           server.disconnectBot();
+        } else {
+          server.setLastVC(channel);
         }
       } else if (server.queue.hasMedia()) {
         server.queue.clear();
@@ -517,7 +519,7 @@ export abstract class Voice {
       if (isStatusMessage) await server.updateStatusMessage(reply);
       if (isQueueMessage) await server.updateQueueMessage(reply);
       if (isNowPlayingMessage) await server.updateNowPlayingMessage(reply);
-      server.lastChannel = interaction.channel;
+      server.setLastChannel(interaction.channel);
       return server;
     } else {
       return SharedMethods.getServer(interaction.guild);

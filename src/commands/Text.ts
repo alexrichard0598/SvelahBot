@@ -7,14 +7,14 @@ import { KnownUser } from "../model/KnownUsers";
 
 @Discord()
 export abstract class Text {
-  @Slash({name: "hello", description: "A hello world message" })
+  @Slash({ name: "hello", description: "A hello world message" })
   async hello(interaction: CommandInteraction): Promise<void> {
     interaction.reply("Hello world!").catch((err) => {
       log.error(err);
     });
   }
 
-  @Slash({name: "heya", description: "Replies to the user" })
+  @Slash({ name: "heya", description: "Replies to the user" })
   async heya(interaction: CommandInteraction): Promise<void> {
     try {
       interaction.reply("Heya " + interaction.user.username)
@@ -26,7 +26,7 @@ export abstract class Text {
 
       if (knownUser != undefined) {
         let msg = new EmbedBuilder();
-        let info = Object.create({name: "🤖User Recognized🤖", value: `${knownUser.message}`});
+        let info = Object.create({ name: "🤖User Recognized🤖", value: `${knownUser.message}` });
 
         msg.addFields(info);
         interaction.followUp({ embeds: [msg] }).catch((err) => {
@@ -38,12 +38,12 @@ export abstract class Text {
     }
   }
 
-  @Slash({name: "clear-messages",  description: "Clears all messages from a bot in the text channel" })
+  @Slash({ name: "clear-messages", description: "Clears all messages from a bot in the text channel" })
   async clear(interaction: CommandInteraction): Promise<void> {
     try {
       await interaction.deferReply();
       const server = await SharedMethods.getServer(interaction.guild);
-      server.lastChannel = interaction.channel;
+      server.setLastChannel(interaction.channel);
       const deleting = await interaction.fetchReply();
       const messages = await SharedMethods.retrieveBotMessages(interaction.channel, [deleting.id]);
 
@@ -58,7 +58,7 @@ export abstract class Text {
   // //   try {
   // //     await interaction.deferReply();
   // //     const server = await SharedMethods.getServer(interaction.guild);
-  // //     server.lastChannel = interaction.channel;
+  // //     server.setLastChannel(interaction.channel);
   // //     throw new Error("This is a test error");
   // //   } catch (error) {
   // //     SharedMethods.handleError(error, interaction.guild);

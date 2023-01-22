@@ -10,9 +10,9 @@ export class PlayableResource {
     url: string;
     meta: Metadata;
     private resource: AudioResource;
-    discordServerId: number;
+    discordServerId: string;
 
-    constructor(server: VolfbotServer | number, url = "", meta: Metadata = new Metadata()) {
+    constructor(server: VolfbotServer | string, url = "", meta: Metadata = new Metadata()) {
         this.url = url;
         this.meta = meta;
         this.discordServerId = server instanceof VolfbotServer ? server.id : server;

@@ -3,7 +3,8 @@ import { Client } from "discordx";
 import { config as configDotenv } from "dotenv";
 import { resolve } from "path/posix";
 import { log } from "./logging";
-import { ActivityType, Events, GatewayIntentBits, Interaction, Partials } from "discord.js";
+import { ActivityType, Events, GatewayIntentBits, Guild, Interaction, Partials } from "discord.js";
+import { SharedMethods } from "./commands/SharedMethods";
 
 let client: Client;
 
@@ -63,9 +64,10 @@ async function start() {
       client.executeReaction(reaction, user);
     });
 
-    await client
-      .login(process.env.TOKEN)
-      .then(() => log.info("Volfbot Online"));
+    await client.login(process.env.TOKEN).then(() => {
+      log.info("Volfbot Online");
+      client.guilds.cache.forEach((guild: Guild) => SharedMethods.getServer(guild));
+    });
   } catch (error) {
     log.error(error);
   }

@@ -6,14 +6,16 @@ import { Messages } from "./Messages";
 import * as fs from 'fs';
 import { PlayableResource } from "./PlayableResource";
 import { log } from "../logging";
+import { DiscordServer, DiscordServerManager } from "../database/DiscordServer";
 
 export class VolfbotServer {
   guild: Guild;
   queue: MediaQueue;
   audioPlayer: AudioPlayer;
   lastChannel: TextBasedChannel;
+  lastVC: VoiceBasedChannel;
   messages: Messages;
-  id: number;
+  id: string;
   private playingSystemSound = false;
   private disconnectTimer;
   private nowPlayingClock;
@@ -22,7 +24,7 @@ export class VolfbotServer {
     this.guild = guild;
     this.queue = new MediaQueue(this);
     this.messages = new Messages();
-    this.id = guild ? Number.parseInt(guild.id) : undefined;
+    this.id = guild ? guild.id : undefined;
     this.audioPlayer = new AudioPlayer();
 
     this.audioPlayer.on(AudioPlayerStatus.Idle, async () => {
@@ -32,6 +34,8 @@ export class VolfbotServer {
     this.audioPlayer.on(AudioPlayerStatus.Playing, async (oldState: AudioPlayerState) => {
       this.playerPlaying(oldState);
     });
+
+    this.serverInit();
   }
 
   async playSong(media: PlayableResource) {
@@ -142,7 +146,7 @@ export class VolfbotServer {
 
   async connectBot(interaction: CommandInteraction): Promise<EmbedBuilder> {
     try {
-      this.lastChannel = interaction.channel;
+      this.setLastChannel(interaction.channel);
       const guildMember = await this.guild.members.fetch(
         interaction.user
       );
@@ -156,9 +160,11 @@ export class VolfbotServer {
         joinVoiceChannel({
           channelId: vc.id,
           guildId: vc.guildId,
-          adapterCreator: vc.guild.voiceAdapterCreator as unknown as DiscordGatewayAdapterCreator,
+          adapterCreator: vc.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
         }).subscribe(audioPlayer);
         embed.setDescription("Joined " + vc.name);
+
+        this.setLastVC(vc);
       }
 
       let stream = fs.createReadStream('./src/assets/sounds/volfbot-connect.ogg');
@@ -169,6 +175,81 @@ export class VolfbotServer {
       return embed;
     } catch (error) {
       SharedMethods.handleError(error, this.guild);
+    }
+  }
+
+  async setLastChannel(channel: TextBasedChannel) {
+    try {
+      let lastVCId = this.lastVC ? this.lastVC.id : null;
+      let discordServer = new DiscordServer(this.id, channel.id, lastVCId);
+      DiscordServerManager.updateServer(discordServer);
+      this.lastChannel = channel;
+    } catch (error) {
+      SharedMethods.handleError(error, this.guild);
+    }
+
+  }
+
+  async setLastVC(channel: VoiceBasedChannel) {
+    try {
+      let lastChannelId = this.lastChannel ? this.lastChannel.id : null;
+      let discordServer = new DiscordServer(this.id, lastChannelId, channel.id);
+      DiscordServerManager.updateServer(discordServer);
+      this.lastVC = channel;
+    } catch (error) {
+      SharedMethods.handleError(error, this.guild);
+    }
+
+  }
+
+  private async serverInit() {
+    let server = await DiscordServerManager.getServer(this.id);
+    if (server == null) {
+      let lastChannelId = this.lastChannel ? this.lastChannel.id : null;
+      let lastVCId = this.lastVC ? this.lastVC.id : null;
+      server = new DiscordServer(this.id, lastChannelId, lastVCId);
+      DiscordServerManager.addServer(server);
+    } else {
+      try {
+        let lastChannel = server.lastChannelId ? await this.guild.channels.fetch(server.lastChannelId.toString()) : null;
+        if (lastChannel && lastChannel.isTextBased()) this.lastChannel = lastChannel;
+      } catch (error) {
+        if (error.name !== "DiscordAPIError[10003]") {
+          throw error;
+        } else {
+          log.warn("Failed to load last channel");
+        }
+      }
+
+      try {
+        let lastVC = server.lastVCId ? await this.guild.channels.fetch(server.lastVCId.toString()) : null;
+        if (lastVC && lastVC.isVoiceBased()) this.lastVC = lastVC;
+      } catch (error) {
+        if (error.name !== "DiscordAPIError[10003]") {
+          throw error;
+        } else {
+          log.warn("Failed to load last vc");
+        }
+      }
+
+      this.botRecconect();
+    }
+  }
+
+  private async botRecconect() {
+    let hasMedia = await this.queue.hasMedia();
+    if (hasMedia && this.lastVC) {
+      if (this.lastVC.members.filter(member => member.id != '698214544560095362').size > 0 && this.lastVC.joinable) {
+        joinVoiceChannel({
+          channelId: this.lastVC.id,
+          guildId: this.lastVC.guildId,
+          adapterCreator: this.lastVC.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
+        }).subscribe(this.audioPlayer);
+
+        this.queue.resumePlayback();
+      } else {
+        this.queue.clear();
+      }
     }
   }
 

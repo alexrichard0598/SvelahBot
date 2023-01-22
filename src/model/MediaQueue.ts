@@ -53,20 +53,19 @@ export class MediaQueue {
         QueueManager.enqueueSongs([currentSong.toISong()]);
       } else {
         this.looping = false;
-      } catch (error) {
-        SharedMethods.handleError(error, this.server.guild);
       }
-
+    }
+    catch (error) {
+      SharedMethods.handleError(error, this.server.guild);
     }
   }
 
   async getQueueCount(): Promise<number> {
     try {
-      return QueueManager.getQueueCount(this.server.id);
+      return await QueueManager.getQueueCount(this.server.id);
     } catch (error) {
       SharedMethods.handleError(error, this.server.guild);
     }
-
   }
 
   async getQueue(): Promise<PlayableResource[]> {
@@ -139,7 +138,21 @@ export class MediaQueue {
     } catch (error) {
       SharedMethods.handleError(error, this.server.guild);
     }
+  }
 
+  async resumePlayback(): Promise<PlayableResource | null> {
+    try {
+      let song = null;
+
+      if (this.hasMedia()) {
+        song = await this.currentItem();
+        this.server.playSong(song);
+      }
+
+      return song;
+    } catch (error) {
+      SharedMethods.handleError(error, this.server.guild);
+    }
   }
 
   loopQueue(): void {
@@ -165,15 +178,15 @@ export class MediaQueue {
     }
   }
 
-  removeItemAt(i: number) {
+  async removeItemAt(i: number): Promise<ISong> {
     try {
-      QueueManager.removeSongAt(this.server.id, i);
+      return await QueueManager.removeSongAt(this.server.id, i);
     } catch (error) {
       SharedMethods.handleError(error, this.server.guild);
     }
   }
 
-  private mediaQueueFromQueue(queue: Queue) {
+  private mediaQueueFromQueue(queue: Queue): PlayableResource[] {
     let mediaQueue = new Array<PlayableResource>();
     queue.forEach(async (song) => {
       let media = await PlayableResource.parseFromISong(song);
