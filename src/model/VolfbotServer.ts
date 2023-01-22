@@ -4,7 +4,8 @@ import { SharedMethods } from "../commands/SharedMethods";
 import { MediaQueue } from "./MediaQueue";
 import { Messages } from "./Messages";
 import * as fs from 'fs';
-import { PlayableResource } from "./YouTube";
+import { PlayableResource } from "./PlayableResource";
+import { Discord, On } from "discordx";
 
 export class VolfbotServer {
   guild: Guild;
@@ -23,10 +24,6 @@ export class VolfbotServer {
     this.messages = new Messages();
     this.id = guild ? Number.parseInt(guild.id) : undefined;
     this.audioPlayer = new AudioPlayer();
-
-    this.audioPlayer.on("stateChange", (oldState, newState) => {
-      console.log(`Old State: ${oldState.status}; New State: ${newState.status}`);
-    })
 
     this.audioPlayer.on(AudioPlayerStatus.Idle, async () => {
       this.playerIdle();

@@ -1,4 +1,4 @@
-import { YouTubePlaylist } from "./YouTube";
+import { YouTubePlaylist } from "./PlayableResource";
 
 export interface IMetadata {
   title: string;

@@ -1,9 +1,8 @@
 import { SharedMethods } from "../commands/SharedMethods";
-import { PlayableResource } from "./YouTube";
+import { PlayableResource } from "./PlayableResource";
 import { Metadata } from "./Metadata";
-import { ISong, Queue, QueueManager, Song } from "../database/Queue";
+import { ISong, Queue, QueueManager } from "../database/Queue";
 import { VolfbotServer } from "./VolfbotServer";
-import { it } from "node:test";
 
 export class MediaQueue {
   private looping: boolean = false;
@@ -14,19 +13,19 @@ export class MediaQueue {
     this.server = server;
   }
 
-  async enqueue(url: string, enqueuedBy: string, meta?: Metadata): Promise<PlayableResource> {
-    const video = new PlayableResource(this.server, url)
-    video.meta = meta && meta.title !== "" ? meta : await SharedMethods.getMetadata(url, enqueuedBy, null);
-    if (RegExp(/.*jurassic.*/, 'i').test(video.meta.title) && RegExp(/.*harmonica.*/, 'i').test(video.meta.title)) {
-      this.server.lastChannel.send("No.");
-    } else if ((RegExp(/.*titanic.*/, 'i').test(video.meta.title) || (RegExp(/.*heart.*/, 'i').test(video.meta.title))) && (RegExp(/.*flute.*/, 'i').test(video.meta.title) || RegExp(/.*recorder.*/, 'i').test(video.meta.title))) {
-      this.server.lastChannel.send("No.");
-    } else if (video.meta.title !== "") {
-      const song = video.toISong();
-      QueueManager.enqueueSongs([song]);
-    }
+  async enqueue(media: Array<PlayableResource>) {
+    let songs: Array<ISong> = new Array<ISong>();
+    media.forEach((video) => {
+      if (RegExp(/.*jurassic.*/, 'i').test(video.meta.title) && RegExp(/.*harmonica.*/, 'i').test(video.meta.title)) {
+        this.server.lastChannel.send("No.");
+      } else if ((RegExp(/.*titanic.*/, 'i').test(video.meta.title) || (RegExp(/.*heart.*/, 'i').test(video.meta.title))) && (RegExp(/.*flute.*/, 'i').test(video.meta.title) || RegExp(/.*recorder.*/, 'i').test(video.meta.title))) {
+        this.server.lastChannel.send("No.");
+      } else {
+        songs.push(video.toISong());
+      }
+    });
 
-    return video;
+    QueueManager.enqueueSongs(songs);
   }
 
   async dequeue(index: number = 1): Promise<void> {
@@ -65,14 +64,14 @@ export class MediaQueue {
     QueueManager.enqueueSongs(queue);
   }
 
-  async getItem(id: string): Promise<PlayableResource> {
-    throw new Error();
-    //return this.queue.find(v => v.id == id);
+  async getItem(id: number): Promise<PlayableResource> {
+    let song = await QueueManager.getSong(id);
+    return PlayableResource.parseFromISong(song);
   }
 
-  getItemAt(index: number): PlayableResource {
-    throw new Error();
-    //return this.queue[index];
+  async getItemAt(index: number): Promise<PlayableResource> {
+    let song = await QueueManager.getSongAt(this.server.id, index);
+    return PlayableResource.parseFromISong(song);
   }
 
   async getTotalLength(): Promise<number> {
@@ -88,7 +87,7 @@ export class MediaQueue {
   async currentItem(): Promise<PlayableResource | null> {
     if (this.currentSong == undefined) {
       let song = await QueueManager.getCurrentSong(this.server.id);
-      if(song == null) return null;
+      if (song == null) return null;
       this.currentSong = await PlayableResource.parseFromISong(song);
     }
     return this.currentSong;
@@ -102,24 +101,19 @@ export class MediaQueue {
     this.looping = false;
   }
 
-  shuffle(): void {
-    throw new Error();
-    // let copyQueue = this.queue.slice(1);
-    // let shuffledQueue = new Array<PlayableResource>();
-    // shuffledQueue.push(this.queue[0]);
-    // while (copyQueue.length > 0) {
-    //   const j = Math.floor(Math.random() * (copyQueue.length))
-    //   shuffledQueue.push(copyQueue[j]);
-    //   copyQueue = copyQueue.slice(0, j).concat(copyQueue.slice(j + 1));
-    // }
-
-    // this.queue = shuffledQueue;
+  async shuffle() {
+    let copyQueue = await this.getQueue();
+    let shuffledQueue = await this.getQueue();
+    while (copyQueue.length > 0) {
+      const j = Math.floor(Math.random() * (copyQueue.length))
+      shuffledQueue.push(copyQueue[j]);
+      copyQueue = copyQueue.slice(0, j).concat(copyQueue.slice(j + 1));
+    }
+    this.setQueue(shuffledQueue);
   }
 
-  removeItemAt(i: number): void {
-    throw new Error();
-    // const newQueue = this.queue.slice(0, i).concat(this.queue.slice(i + 1));
-    // this.queue = newQueue;
+  async removeItemAt(i: number) {
+    QueueManager.removeSongAt(this.server.id, i);
   }
 
   private mediaQueueFromQueue(queue: Queue) {

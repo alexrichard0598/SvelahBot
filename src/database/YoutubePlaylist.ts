@@ -3,3 +3,7 @@ export interface IYouTubePlaylist {
   name: string;
   length: number;
 }
+
+export class YouTubePlaylistManager {
+  //TODO: Setup YouTube Playlist DB Interface
+}

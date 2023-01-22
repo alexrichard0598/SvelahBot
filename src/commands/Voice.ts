@@ -13,7 +13,7 @@ import {
 import { IMetadata, Metadata } from "../model/Metadata";
 import { SharedMethods } from "./SharedMethods";
 import { MediaType } from "../model/MediaType";
-import { PlayableResource, YouTubePlaylist } from "../model/YouTube";
+import { PlayableResource, YouTubePlaylist } from "../model/PlayableResource";
 import moment = require("moment");
 import momentDurationFormatSetup = require("moment-duration-format");
 momentDurationFormatSetup(moment);
@@ -452,7 +452,7 @@ export abstract class Voice {
       } else if (index > await server.queue.getQueueCount()) {
         interaction.editReply({ embeds: [new EmbedBuilder().setDescription(`You entered a number larger than the number of queued songs`)] });
       } else {
-        const song = server.queue.getItemAt(index - 1);
+        const song = await server.queue.getItemAt(index - 1);
         server.queue.removeItemAt(index - 1);
         interaction.editReply({ embeds: [new EmbedBuilder().setDescription(`${song.meta.title} at queue position ${index} removed`)] });
       }
@@ -556,14 +556,12 @@ export abstract class Voice {
     } else if (mediaType[0] == MediaType.yt_video || mediaType[0] == MediaType.yt_search) {
       media = new Array<PlayableResource>();
       let vid = new PlayableResource(server, mediaType[1]);
-      vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.username, new YouTubePlaylist("", 1, server));
+      vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.username);
       media.push(vid);
     }
 
     if (media !== undefined && queue) {
-      media.forEach((video: PlayableResource) => {
-        server.queue.enqueue(video.url, video.meta.queuedBy, video.meta);
-      });
+      server.queue.enqueue(media);
     }
 
     let videoToTest: PlayableResource;

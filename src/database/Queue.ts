@@ -1,34 +1,36 @@
 import { DataBase } from "./DataBase";
 
 export interface ISong {
-  id: number;
+  id: string;
   url: string;
   title: string;
   length: number;
   queuedBy: string;
-  youtubePlaylistId: number | null;
+  youtubePlaylistId: string | null;
   discordServerId: number;
   queueOrder: number;
 }
 
 export class Song implements ISong {
-  id: number = 0;
+  id: string;
   url: string;
   title: string;
   length: number;
   queuedBy: string;
-  youtubePlaylistId: number | null;
+  youtubePlaylistId: string | null;
   discordServerId: number;
-  queueOrder: number = 0;
+  queueOrder: number = 1;
 
   constructor(
+    id: string,
     url: string,
     title: string,
     length: number,
     queuedBy: string,
-    youtubePlaylistId: number | null,
+    youtubePlaylistId: string | null,
     discordServerId: number
   ) {
+    this.id = id;
     this.url = url;
     this.title = title;
     this.length = length;
@@ -111,11 +113,11 @@ export abstract class QueueManager {
         db.connection.connect();
 
         db.connection.query(
-          'INSERT INTO Songs SET ?', songs, (err, res, fields) => {
+          'INSERT INTO Songs (`id`, `url`, `title`, `length`, `queuedBy`, `youtubePlaylistId`, `discordServerId`, `queueOrder`) VALUES ?', 
+          [songs.map(song => [song.id, song.url, song.title, song.length, song.queuedBy, song.youtubePlaylistId, song.discordServerId, song.queueOrder])], (err, res, fields) => {
             if (err) reject(err);
             resolve(res);
           });
-
         db.connection.end();
       }
     );
@@ -132,8 +134,7 @@ export abstract class QueueManager {
           if (error) reject(error);
           const result = results[0];
           if (result) {
-            song = new Song(result.url, result.title, result.length, result.queuedBy, result.youtubePlaylistId, result.discordServerId);
-            song.id = result.id;
+            song = new Song(result.id, result.url, result.title, result.length, result.queuedBy, result.youtubePlaylistId, result.discordServerId);
             song.queueOrder = result.queueOrder;
           } else {
             song = null;
@@ -142,6 +143,72 @@ export abstract class QueueManager {
           db.connection.end();
           resolve(song);
         });
+      }
+    );
+  }
+
+  public static async getSong(songId: number): Promise<Song> {
+    return new Promise(
+      function (resolve, reject) {
+        let db = new DataBase();
+        db.connection.connect();
+        let song: ISong;
+
+        db.connection.query(`SELECT * FROM Songs WHERE id = ${songId}`, (error, results: [ISong], fields) => {
+          if (error) reject(error);
+          const result = results[0];
+          if (result) {
+            song = new Song(result.id, result.url, result.title, result.length, result.queuedBy, result.youtubePlaylistId, result.discordServerId);
+            song.queueOrder = result.queueOrder;
+          } else {
+            song = null;
+          }
+        }).on("end", () => {
+          db.connection.end();
+          resolve(song);
+        });
+      }
+    );
+  }
+
+  public static async getSongAt(serverId: number, queueOrder: number): Promise<Song> {
+    return new Promise(
+      function (resolve, reject) {
+        let db = new DataBase();
+        db.connection.connect();
+        let song: ISong;
+
+        db.connection.query(`SELECT * FROM Songs  WHERE discordServerId = ${serverId} AND queueOrder = ${queueOrder}`, (error, results: [ISong], fields) => {
+          if (error) reject(error);
+          const result = results[0];
+          if (result) {
+            song = new Song(result.id, result.url, result.title, result.length, result.queuedBy, result.youtubePlaylistId, result.discordServerId);
+            song.queueOrder = result.queueOrder;
+          } else {
+            song = null;
+          }
+        }).on("end", () => {
+          db.connection.end();
+          resolve(song);
+        });
+      }
+    );
+  }
+
+  public static async removeSongAt(serverId: number, queueOrder: number): Promise<Song> {
+    let song = await QueueManager.getCurrentSong(serverId);
+
+    return new Promise(
+      function (resolve, reject) {
+        let db = new DataBase();
+        db.connection.connect();
+
+        db.connection.query(`DELETE FROM Songs WHERE discordServerId = ${serverId} AND queueOrder = ${queueOrder}`);
+        db.connection.query(`UPDATE Songs SET queueOrder = queueOrder - 1 WHERE discordServerId = ${serverId} AND queueOrder > ${queueOrder}`);
+
+        db.connection.end();
+
+        resolve(song);
       }
     );
   }
