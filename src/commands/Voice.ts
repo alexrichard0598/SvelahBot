@@ -37,7 +37,7 @@ export abstract class Voice {
     }
   }
 
-  @Slash({ name: "disconect", description: "Disconnect from the voice chanel" })
+  @Slash({ name: "disconnect", description: "Disconnect from the voice chanel" })
   @Slash({ name: "dc", description: "Disconnect from the voice chanel" })
   async disconnect(interaction: CommandInteraction): Promise<void> {
     try {
@@ -104,8 +104,8 @@ export abstract class Voice {
     }
   }
 
-  @Slash({ name: "playnow", description: "Adds item to start of the queue and starts playing it now" })
-  async playnow(
+  @Slash({ name: "play-now", description: "Adds item to start of the queue and starts playing it now" })
+  async playNow(
     @SlashOption({ name: "media", description: "The media to play", required: true, type: ApplicationCommandOptionType.String })
     url: string,
     interaction: CommandInteraction
@@ -371,13 +371,13 @@ export abstract class Voice {
     }
   }
 
-  @Slash({ name: "loop", description: "Loops the current queue until looping is stoped" })
+  @Slash({ name: "loop", description: "Loops the current queue until looping is stopped" })
   async loop(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await this.initCommand({ interaction: interaction, isStatusMessage: true });
 
       server.queue.loopQueue();
-      interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Queue will loop until stoped\n(use /end-loop to stop looping)")] });
+      interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Queue will loop until stopped\n(use /end-loop to stop looping)")] });
     } catch (error) {
       SharedMethods.handleError(error, interaction.guild);
     }
@@ -477,7 +477,7 @@ export abstract class Voice {
           msg = `I'm sitting in the *${vc.name}* voice chat, and waiting for your commands`
           break;
         case BotStatus.PlayingMusic:
-          msg = `I'm curently playing [${(await server.queue.currentItem()).meta.title}](${(await server.queue.currentItem()).url}) in "${vc.name}"`
+          msg = `I'm currently playing [${(await server.queue.currentItem()).meta.title}](${(await server.queue.currentItem()).url}) in "${vc.name}"`
           break;
         default:
           msg = "I'm not sure what I'm up to";

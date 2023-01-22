@@ -1,6 +1,5 @@
 import { Discord, Slash } from "discordx";
 import { CommandInteraction, EmbedBuilder } from "discord.js";
-import { log } from "../logging";
 import { SharedMethods } from "./SharedMethods";
 import * as fs from 'fs';
 import { KnownUser } from "../model/KnownUsers";

@@ -5,7 +5,7 @@ import { VolfbotServer } from "../model/VolfbotServer";
 import { log } from "../logging"
 import * as youtubeSearch from "youtube-search";
 import * as youtubeDL from "youtube-dl-exec"
-const ytdl = youtubeDL.create("/bin/ytdlp");
+const youtubeDownloader = youtubeDL.create("/bin/ytdlp");
 import { IMetadata, Metadata } from "../model/Metadata";
 import { MediaQueue } from "../model/MediaQueue";
 import { MediaType } from "../model/MediaType";
@@ -119,7 +119,7 @@ export abstract class SharedMethods {
     public static async getMetadata(url: string, queuedBy: string, server: VolfbotServer, playlist?: YouTubePlaylist): Promise<IMetadata> {
         const meta = new Metadata();
         try {
-            const exec = await ytdl.exec(url, {
+            const exec = await youtubeDownloader.exec(url, {
                 output: "./tmp",
                 dumpSingleJson: true,
                 simulate: true,
@@ -142,7 +142,7 @@ export abstract class SharedMethods {
         url: string,
         _queuedBy: string
     ): Promise<AudioResource<unknown>> {
-        const exec = ytdl.exec(
+        const exec = youtubeDownloader.exec(
             url,
             {
                 output: "-",
@@ -168,7 +168,7 @@ export abstract class SharedMethods {
         server: VolfbotServer
     ): Promise<Array<PlayableResource>> {
 
-        const exec = await ytdl.exec(playlistId, {
+        const exec = await youtubeDownloader.exec(playlistId, {
             dumpSingleJson: true,
             simulate: true,
             flatPlaylist: true
@@ -207,7 +207,7 @@ export abstract class SharedMethods {
             } else if (new RegExp(/watch\?v=/).test(url)) {
                 mediaType = MediaType.yt_video;
                 url = "https://www.youtube.com/watch?v=" + url.match(/(?:v=)([^&?]*)/).toString().slice(2, 13);
-            } else if (new RegExp(/youtu.be/).test(url)) {
+            } else if (new RegExp(/youtu\.be/).test(url)) {
                 mediaType = MediaType.yt_video;
                 url = "https://www.youtube.com/watch?v=" + url.match(/(?:.be\/)([^&?]*)/).toString().slice(4, 15);
             } else if (new RegExp(/^[A-Za-z0-9-_]{11}$/).test(url)) {
@@ -276,10 +276,10 @@ export abstract class SharedMethods {
             } else {
                 lengthString = `${lengthDate.getUTCMinutes()}:${('0' + lengthDate.getUTCSeconds()).slice(-2)}`;
             }
-            const percPlayed: number = Math.ceil((playbackDuration / length) * 100);
+            const percentPlayed: number = Math.ceil((playbackDuration / length) * 100);
             let msg = `[${metadata.title}](${nowPlaying.url}) [${metadata.queuedBy}]\n\n`;
             for (let i = 0; i < 33; i++) {
-                if (percPlayed / 3 >= i) {
+                if (percentPlayed / 3 >= i) {
                     msg += '█';
                 } else {
                     msg += '░';

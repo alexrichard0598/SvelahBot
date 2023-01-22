@@ -6,7 +6,7 @@ export class DataBase {
   public readonly connection = mysql.createConnection({
     host: 'localhost',
     user: 'volfbot',
-    password: process.env.DATABASE_PSWD,
+    password: process.env.DATABASE_PASSWORD,
     database: 'volfbot'
   });
 

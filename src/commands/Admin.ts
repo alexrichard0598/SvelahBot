@@ -7,7 +7,7 @@ import { IsAdmin } from "../guards/isAdmin";
 export abstract class Voice {
   @Slash({
     name: "shutdown",
-    description: "Shutsdown the bot, can only be accessed by bot admins",
+    description: "Shutdowns the bot, can only be accessed by bot admins",
   })
   @Guard(IsAdmin)
   async shutdown(interaction: CommandInteraction): Promise<void> {

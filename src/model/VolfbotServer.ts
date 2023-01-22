@@ -70,14 +70,14 @@ export class VolfbotServer {
   async updateNowPlayingMessage(msg: Message) {
     try {
       msg.fetch(true);
-      if (this.messages.nowplaying != undefined) {
-        const nowplaying: Message = await this.messages.nowplaying.fetch(true);
-        if (nowplaying != null) {
-          if (nowplaying.deletable) nowplaying.delete();
+      if (this.messages.nowPlaying != undefined) {
+        const nowPlaying: Message = await this.messages.nowPlaying.fetch(true);
+        if (nowPlaying != null) {
+          if (nowPlaying.deletable) nowPlaying.delete();
         }
       }
 
-      if (msg instanceof Message) this.messages.nowplaying = msg;
+      if (msg instanceof Message) this.messages.nowPlaying = msg;
     } catch (error) {
       if (error.name !== "DiscordAPIError[10008]") {
         SharedMethods.handleError(error, this.guild);
@@ -212,7 +212,7 @@ export class VolfbotServer {
     } else {
       this.getLastChannel(server);
       this.getLastVC(server);
-      this.botRecconect();
+      this.botReconnect();
     }
   }
 
@@ -242,7 +242,7 @@ export class VolfbotServer {
     }
   }
 
-  private async botRecconect() {
+  private async botReconnect() {
     let hasMedia = await this.queue.hasMedia();
     if (hasMedia && this.lastVC) {
       if (this.lastVC.members.filter(member => member.id != '698214544560095362').size > 0 && this.lastVC.joinable) {
@@ -276,7 +276,7 @@ export class VolfbotServer {
           this.playSong(currentItem);
         }
       } else {
-        if (!wasPlayingSystemSound) embed.setDescription("Reached end of queue, stoped playing");
+        if (!wasPlayingSystemSound) embed.setDescription("Reached end of queue, stopped playing");
         clearInterval(this.nowPlayingClock);
         this.autoDisconnect();
       }
@@ -293,7 +293,7 @@ export class VolfbotServer {
   private async playerPlaying(oldState: AudioPlayerState) {
     try {
       if (oldState.status == AudioPlayerStatus.Playing || this.playingSystemSound) return;
-      if (this.messages.nowplaying === undefined) {
+      if (this.messages.nowPlaying === undefined) {
         const embed = await SharedMethods.nowPlayingEmbed(this);
         this.createNowPlayingMessage(embed);
       }
@@ -322,10 +322,10 @@ export class VolfbotServer {
     this.nowPlayingClock = setInterval(async () => {
       const embed = await SharedMethods.nowPlayingEmbed(this);
       try {
-        if (this.messages.nowplaying) {
-          const nowPlayingMessage = await this.messages.nowplaying.fetch();
+        if (this.messages.nowPlaying) {
+          const nowPlayingMessage = await this.messages.nowPlaying.fetch();
           if (nowPlayingMessage.editable) {
-            this.messages.nowplaying = await nowPlayingMessage.edit({ embeds: [embed] });
+            this.messages.nowPlaying = await nowPlayingMessage.edit({ embeds: [embed] });
           } else {
             this.createNowPlayingMessage(embed, nowPlayingMessage);
           }
@@ -345,12 +345,12 @@ export class VolfbotServer {
     if (nowPlayingMessage instanceof Message && nowPlayingMessage.deletable) {
       this.updateNowPlayingMessage(await this.lastChannel.send({ embeds: [embed] }))
     } else {
-      this.messages.nowplaying = await this.lastChannel.send({ embeds: [embed] });
+      this.messages.nowPlaying = await this.lastChannel.send({ embeds: [embed] });
     }
 
     // TODO: Figure out how to respond to reactions
     // // try {
-    // //   let nowPlayingMessage = await this.messages.nowplaying.fetch();
+    // //   let nowPlayingMessage = await this.messages.nowPlaying.fetch();
     // //   nowPlayingMessage.react("⏹️");
     // // } catch (error) {
     // //   // Check if it's a message not found error

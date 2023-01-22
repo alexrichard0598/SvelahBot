@@ -7,14 +7,14 @@ import * as path from "path";
 export abstract class Help {
   @Slash({name: "help", description: "A help message" })
   async help(interaction: CommandInteraction): Promise<void> {
-    const helpfile = path.join(__dirname, "..", "..", "help.txt");
-    const helptext = fs.existsSync(helpfile)
-      ? fs.readFileSync(helpfile, "utf-8")
+    const helpFile = path.join(__dirname, "..", "..", "help.txt");
+    const helpText = fs.existsSync(helpFile)
+      ? fs.readFileSync(helpFile, "utf-8")
       : "Help me!";
 
     let embed = new EmbedBuilder();
 
-    embed.setTitle("Help Text").setDescription(helptext);
+    embed.setTitle("Help Text").setDescription(helpText);
 
     interaction.reply({ embeds: [embed] });
   }

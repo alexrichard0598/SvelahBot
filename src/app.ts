@@ -39,7 +39,7 @@ async function start() {
         GatewayIntentBits.GuildBans,
       ],
       botGuilds: process.env.DEV == "true" ? ["664999986974687242"] : undefined,
-      presence: process.env.DEV == "true" ? { status: "dnd", activities: [{ name: "Bot is underdevlopment", type: ActivityType.Listening }] } : { status: "online", activities: [{ name: "music", type: ActivityType.Listening }] },
+      presence: process.env.DEV == "true" ? { status: "dnd", activities: [{ name: "Bot is underdevelopment", type: ActivityType.Listening }] } : { status: "online", activities: [{ name: "music", type: ActivityType.Listening }] },
     });
 
     if (process.env.DEV == "true") {
