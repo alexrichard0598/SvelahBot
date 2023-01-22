@@ -3,7 +3,7 @@ import { Client } from "discordx";
 import { config as configDotenv } from "dotenv";
 import { resolve } from "path/posix";
 import { log } from "./logging";
-import { GatewayIntentBits, Interaction, Partials } from "discord.js";
+import { ActivityType, Events, GatewayIntentBits, Interaction, Partials } from "discord.js";
 
 let client: Client;
 
@@ -38,7 +38,7 @@ async function start() {
         GatewayIntentBits.GuildBans,
       ],
       botGuilds: process.env.DEV == "true" ? ["664999986974687242"] : undefined,
-      presence: process.env.DEV == "true" ? { status: "dnd", activities: [{ name: "Bot is underdevlopment" }] } : { status: "online", activities: [{ name: "" }] },
+      presence: process.env.DEV == "true" ? { status: "dnd", activities: [{ name: "Bot is underdevlopment", type: ActivityType.Listening }] } : { status: "online", activities: [{ name: "music", type: ActivityType.Listening }] },
     });
 
     if (process.env.DEV == "true") {
@@ -59,11 +59,13 @@ async function start() {
       }
     });
 
+    client.on(Events.MessageReactionAdd, async (reaction, user) => {
+      client.executeReaction(reaction, user);
+    });
+
     await client
       .login(process.env.TOKEN)
       .then(() => log.info("Volfbot Online"));
-
-    console.log(process.env.DEV);
   } catch (error) {
     log.error(error);
   }

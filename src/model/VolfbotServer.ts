@@ -3,12 +3,9 @@ import { CommandInteraction, Guild, Message, EmbedBuilder, TextBasedChannel, Voi
 import { SharedMethods } from "../commands/SharedMethods";
 import { MediaQueue } from "./MediaQueue";
 import { Messages } from "./Messages";
-import { IMetadata } from "./Metadata";
 import * as fs from 'fs';
 import { PlayableResource } from "./YouTube";
-import { Discord, On } from "discordx";
 
-@Discord()
 export class VolfbotServer {
   guild: Guild;
   queue: MediaQueue;
@@ -45,19 +42,19 @@ export class VolfbotServer {
     this.audioPlayer.play(resource);
   }
 
-  @On({ event: "messageDelete" })
-  async trackDeletedMessages(message) {
-    const messageID = message.id;
-    if (this.messages.status !== undefined && messageID == this.messages.status.id) {
-      this.messages.status = undefined;
-    }
-    if (this.messages.nowplaying !== undefined && messageID == this.messages.nowplaying.id) {
-      this.messages.nowplaying = undefined;
-    }
-    if (this.messages.queue !== undefined && messageID == this.messages.queue.id) {
-      this.messages.queue = undefined;
-    }
-  }
+  // // @On({ event: "messageDelete" })
+  // // async trackDeletedMessages(message) {
+  // //   const messageID = message.id;
+  // //   if (this.messages.status !== undefined && messageID == this.messages.status.id) {
+  // //     this.messages.status = undefined;
+  // //   }
+  // //   if (this.messages.nowplaying !== undefined && messageID == this.messages.nowplaying.id) {
+  // //     this.messages.nowplaying = undefined;
+  // //   }
+  // //   if (this.messages.queue !== undefined && messageID == this.messages.queue.id) {
+  // //     this.messages.queue = undefined;
+  // //   }
+  // // }
 
   async updateStatusMessage(msg) {
     if (msg instanceof Message) msg.fetch();
@@ -189,11 +186,10 @@ export class VolfbotServer {
   private async playerPlaying(oldState: AudioPlayerState) {
     if (oldState.status == AudioPlayerStatus.Playing || this.playingSystemSound) return;
     if (this.messages.nowplaying === undefined) {
-      const embed = await SharedMethods.nowPlayingMessage(this);
-      let message = await this.lastChannel.send({ embeds: [embed] });
-      this.updateNowPlayingMessage(message);
+      const embed = await SharedMethods.nowPlayingEmbed(this);
+      this.createNowPlayingMessage(embed);
     }
-    this.updatingNowPlayingMessage();
+    this.nowPlayingClockFunction();
   }
 
   private async autoDisconnect() {
@@ -208,33 +204,48 @@ export class VolfbotServer {
     }, 300000);
   }
 
-  private async updatingNowPlayingMessage() {
+  private async nowPlayingClockFunction() {
     if (this.nowPlayingClock !== undefined) {
       clearInterval(this.nowPlayingClock);
     }
     this.nowPlayingClock = setInterval(async () => {
-      if (this.messages.nowplaying !== undefined) {
-        const channel = await this.guild.channels.fetch(this.messages.nowplaying.channelId);
-        if (channel.isTextBased()) {
-          const embed = await SharedMethods.nowPlayingMessage(this);
-          try {
-            const nowPlayingMessage = await this.messages.nowplaying.fetch();
-            if (nowPlayingMessage.editable) {
-              this.messages.nowplaying = await nowPlayingMessage.edit({ embeds: [embed] });
-            } else if (nowPlayingMessage.deletable) {
-              this.updateNowPlayingMessage(await this.lastChannel.send({ embeds: [embed] }))
-            } else {
-              this.messages.nowplaying = await this.lastChannel.send({ embeds: [embed] });
-            }
-          } catch (error) {
-            if (error.name !== "DiscordAPIError[10008]") {
-              throw error;
-            } else {
-              this.messages.nowplaying = await this.lastChannel.send({ embeds: [embed] });
-            }
+      const embed = await SharedMethods.nowPlayingEmbed(this);
+      try {
+        if (this.messages.nowplaying) {
+          const nowPlayingMessage = await this.messages.nowplaying.fetch();
+          if (nowPlayingMessage.editable) {
+            this.messages.nowplaying = await nowPlayingMessage.edit({ embeds: [embed] });
+          } else {
+            this.createNowPlayingMessage(embed, nowPlayingMessage);
           }
+        }
+      } catch (error) {
+        // Check if it's a message not found error
+        if (error.name !== "DiscordAPIError[10008]") {
+          throw error;
+        } else {
+          this.createNowPlayingMessage(embed);
         }
       }
     }, 1000);
+  }
+
+  private async createNowPlayingMessage(embed: EmbedBuilder, nowPlayingMessage?: Message) {
+    if (nowPlayingMessage instanceof Message && nowPlayingMessage.deletable) {
+      this.updateNowPlayingMessage(await this.lastChannel.send({ embeds: [embed] }))
+    } else {
+      this.messages.nowplaying = await this.lastChannel.send({ embeds: [embed] });
+    }
+
+    // TODO: Figure out how to respond to reactions
+    // // try {
+    // //   let nowPlayingMessage = await this.messages.nowplaying.fetch();
+    // //   nowPlayingMessage.react("⏹️");
+    // // } catch (error) {
+    // //   // Check if it's a message not found error
+    // //   if (error.name !== "DiscordAPIError[10008]") {
+    // //     throw error;
+    // //   }
+    // // }
   }
 }
