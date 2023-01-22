@@ -17,8 +17,8 @@ export class VolfbotServer {
   messages: Messages;
   id: string;
   private playingSystemSound = false;
-  private disconnectTimer;
-  private nowPlayingClock;
+  private disconnectTimer: NodeJS.Timeout;
+  private nowPlayingClock: NodeJS.Timer;
 
   constructor(guild: Guild) {
     this.guild = guild;
@@ -42,6 +42,9 @@ export class VolfbotServer {
     try {
       let resource = await media.getResource();
       this.audioPlayer.play(resource);
+      if(!this.nowPlayingClock) {
+        this.nowPlayingClockFunction();
+      }
     } catch (error) {
       SharedMethods.handleError(error, this.guild);
     }

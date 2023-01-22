@@ -262,23 +262,19 @@ export abstract class SharedMethods {
             embed = new EmbedBuilder().setTitle(nowPlayingTitle).setDescription(" ");
         } else {
             const metadata: Metadata = nowPlaying.meta;
-            let playbackDuration = server.audioPlayer.state.playbackDuration;
-            const playbackDurationDate = new Date(playbackDuration);
-            let durationString;
-            if (playbackDurationDate.getUTCHours() > 0) {
-                durationString = `${playbackDurationDate.getUTCHours()}:${('0' + playbackDurationDate.getUTCMinutes()).slice(-2)}:${('0' + playbackDurationDate.getUTCSeconds()).slice(-2)}`;
-            } else {
-                durationString = `${playbackDurationDate.getUTCMinutes()}:${('0' + playbackDurationDate.getUTCSeconds()).slice(-2)}`;
+            const length = metadata.length;
+            let lengthString = this.getTimestamp(length);
+            let maxUnit: TimeUnit = TimeUnit.second;
+
+            if(lengthString.split(":").length > 2) {
+                maxUnit = TimeUnit.hour;
+            } else if (lengthString.split(":").length > 1) {
+                maxUnit = TimeUnit.minute;
             }
 
-            const length = metadata.length;
-            const lengthDate = new Date(length);
-            let lengthString;
-            if (playbackDurationDate.getUTCHours() > 0) {
-                lengthString = `${lengthDate.getUTCHours()}:${('0' + lengthDate.getUTCMinutes()).slice(-2)}:${('0' + lengthDate.getUTCSeconds()).slice(-2)}`;
-            } else {
-                lengthString = `${lengthDate.getUTCMinutes()}:${('0' + lengthDate.getUTCSeconds()).slice(-2)}`;
-            }
+            let playbackDuration = server.audioPlayer.state.playbackDuration;
+            let playbackString = this.getTimestamp(playbackDuration, maxUnit);
+
             const percentPlayed: number = Math.ceil((playbackDuration / length) * 100);
             let msg = `[${metadata.title}](${nowPlaying.url}) [${metadata.queuedBy}]\n\n`;
             for (let i = 0; i < 33; i++) {
@@ -288,9 +284,32 @@ export abstract class SharedMethods {
                     msg += '░';
                 }
             }
-            msg += ` [${durationString}/${lengthString}]`;
+            msg += ` [${playbackString}/${lengthString}]`;
             embed = new EmbedBuilder().setTitle(nowPlayingTitle).setDescription(nowPlayingDescription + msg);
         }
         return embed;
     }
+
+    private static getTimestamp(durationMs: number, largestUnit?: TimeUnit): string {
+        let timestamp = "";
+        let durationSec = durationMs / 1000;
+        let hours = Math.floor(durationSec / 3600);
+        let minutes = Math.floor(durationSec % 3600 / 60);
+        let seconds = Math.floor(durationSec % 3600 % 60);
+        if(hours > 0 || largestUnit == TimeUnit.hour) {
+            timestamp = `${hours}:${('0' + minutes).slice(-2)}:${('0' + seconds).slice(-2)}`;
+        } else if (minutes > 0 || largestUnit == TimeUnit.minute) {
+            timestamp = `${minutes}:${('0' + seconds).slice(-2)}`;
+        } else {
+            timestamp = `${seconds}`;
+        }
+
+        return timestamp;
+    }
+}
+
+enum TimeUnit {
+    hour,
+    minute,
+    second
 }

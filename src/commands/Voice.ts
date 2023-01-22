@@ -104,6 +104,7 @@ export abstract class Voice {
     }
   }
 
+  //TODO: FIX THIS
   @Slash({ name: "play-now", description: "Adds item to start of the queue and starts playing it now" })
   async playNow(
     @SlashOption({ name: "media", description: "The media to play", required: true, type: ApplicationCommandOptionType.String })
@@ -137,20 +138,20 @@ export abstract class Voice {
         connection.subscribe(audioPlayer);
       }
 
-      let currentQueue = queue.getQueue();
-      let newQueue;
+      let currentQueue = await queue.getQueue();
+      let newQueue: PlayableResource[];
 
       if (media instanceof PlayableResource) {
         let tempQueue = new Array<PlayableResource>();
         tempQueue.push(media);
-        newQueue = tempQueue.concat(await currentQueue);
+        newQueue = tempQueue.concat(currentQueue);
       } else if (media instanceof Array<PlayableResource>) {
-        newQueue = media.concat(await currentQueue);
+        newQueue = media.concat(currentQueue);
       } else {
         return;
       }
 
-      queue.setQueue(newQueue);
+      await queue.setQueue(newQueue);
       let currentItem = await queue.currentItem();
       if (currentItem !== undefined) {
         server.playSong(currentItem);
