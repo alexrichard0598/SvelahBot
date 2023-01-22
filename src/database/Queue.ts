@@ -114,8 +114,8 @@ export abstract class QueueManager {
 
         db.connection.query(
           'INSERT INTO Songs (`id`, `url`, `title`, `length`, `queuedBy`, `youtubePlaylistId`, `discordServerId`, `queueOrder`) VALUES ?', 
-          [songs.map(song => [song.id, song.url, song.title, song.length, song.queuedBy, song.youtubePlaylistId, song.discordServerId, song.queueOrder])], (err, res, fields) => {
-            if (err) reject(err);
+          [songs.map(song => [song.id, song.url, song.title, song.length, song.queuedBy, song.youtubePlaylistId, song.discordServerId, song.queueOrder])], (error, res, fields) => {
+            if (error) reject(error);
             resolve(res);
           });
         db.connection.end();
@@ -219,7 +219,7 @@ export abstract class QueueManager {
         let db = new DataBase();
         db.connection.connect();
 
-        db.connection.query(`DELETE FROM Songs WHERE discordServerId = ${serverId}`, (err, results, fields) => {
+        db.connection.query(`DELETE FROM Songs WHERE discordServerId = ${serverId}`, (error, results, fields) => {
           resolve(results);
         });
 

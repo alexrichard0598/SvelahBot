@@ -9,8 +9,8 @@ import { KnownUser } from "../model/KnownUsers";
 export abstract class Text {
   @Slash({ name: "hello", description: "A hello world message" })
   async hello(interaction: CommandInteraction): Promise<void> {
-    interaction.reply("Hello world!").catch((err) => {
-      log.error(err);
+    interaction.reply("Hello world!").catch((error) => {
+      SharedMethods.handleError(error, interaction.guild);
     });
   }
 
@@ -29,8 +29,8 @@ export abstract class Text {
         let info = Object.create({ name: "🤖User Recognized🤖", value: `${knownUser.message}` });
 
         msg.addFields(info);
-        interaction.followUp({ embeds: [msg] }).catch((err) => {
-          log.error(err);
+        interaction.followUp({ embeds: [msg] }).catch((error) => {
+          SharedMethods.handleError(error, interaction.guild);
         });
       }
     } catch (error) {

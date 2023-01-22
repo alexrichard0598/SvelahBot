@@ -551,8 +551,8 @@ export abstract class Voice {
   }
 
   private async dealWithMedia(interaction: CommandInteraction, url: string, server: VolfbotServer, queue = true): Promise<Array<PlayableResource> | PlayableResource | null> {
-    const mediaType = await SharedMethods.determineMediaType(url, server).catch(err => {
-      this.handleDetermineMediaTypeError(err, interaction);
+    const mediaType = await SharedMethods.determineMediaType(url, server).catch(error => {
+      this.handleDetermineMediaTypeError(error, interaction);
     });
 
     let media: Array<PlayableResource>;
@@ -562,7 +562,7 @@ export abstract class Voice {
     } else if (mediaType[0] == MediaType.yt_video || mediaType[0] == MediaType.yt_search) {
       media = new Array<PlayableResource>();
       let vid = new PlayableResource(server, mediaType[1]);
-      vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.username);
+      vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.username, server);
       media.push(vid);
     }
 
@@ -574,7 +574,7 @@ export abstract class Voice {
     const vid: PlayableResource = media[0];
 
     if (vid.meta.title === '') {
-      vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.username, mediaType[1]);
+      vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.username, server, mediaType[1]);
     }
 
     videoToTest = vid;
@@ -598,11 +598,11 @@ export abstract class Voice {
     return media;
   }
 
-  private async handleDetermineMediaTypeError(err, interaction) {
-    if (err instanceof EmbedBuilder) {
-      interaction.editReply({ embeds: [err] });
+  private async handleDetermineMediaTypeError(error, interaction) {
+    if (error instanceof EmbedBuilder) {
+      interaction.editReply({ embeds: [error] });
     } else {
-      throw err;
+      throw error;
     }
   }
 }

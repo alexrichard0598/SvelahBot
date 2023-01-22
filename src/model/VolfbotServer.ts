@@ -6,7 +6,7 @@ import { Messages } from "./Messages";
 import * as fs from 'fs';
 import { PlayableResource } from "./PlayableResource";
 import { log } from "../logging";
-import { DiscordServer, DiscordServerManager } from "../database/DiscordServer";
+import { DiscordServer, DiscordServerManager, IDiscordServer } from "../database/DiscordServer";
 
 export class VolfbotServer {
   guild: Guild;
@@ -61,7 +61,7 @@ export class VolfbotServer {
       if (error.name !== "DiscordAPIError[10008]") {
         SharedMethods.handleError(error, this.guild);
       } else {
-        log.warn("Failed to delete status message");
+        log.warn(`Failed to delete status message on server with id of ${this.guild.id}`);
       }
     }
 
@@ -82,7 +82,7 @@ export class VolfbotServer {
       if (error.name !== "DiscordAPIError[10008]") {
         SharedMethods.handleError(error, this.guild);
       } else {
-        log.warn("Failed to delete now playing message");
+        log.warn(`Failed to delete now playing message on server with id of ${this.guild.id}`);
       }
     }
   }
@@ -101,7 +101,7 @@ export class VolfbotServer {
       if (error.name !== "DiscordAPIError[10008]") {
         SharedMethods.handleError(error, this.guild);
       } else {
-        log.warn("Failed to delete queue message");
+        log.warn(`Failed to delete queue message on server with id of ${this.guild.id}`);
       }
     }
 
@@ -210,29 +210,35 @@ export class VolfbotServer {
       server = new DiscordServer(this.id, lastChannelId, lastVCId);
       DiscordServerManager.addServer(server);
     } else {
-      try {
-        let lastChannel = server.lastChannelId ? await this.guild.channels.fetch(server.lastChannelId.toString()) : null;
-        if (lastChannel && lastChannel.isTextBased()) this.lastChannel = lastChannel;
-      } catch (error) {
-        if (error.name !== "DiscordAPIError[10003]") {
-          throw error;
-        } else {
-          log.warn("Failed to load last channel");
-        }
-      }
-
-      try {
-        let lastVC = server.lastVCId ? await this.guild.channels.fetch(server.lastVCId.toString()) : null;
-        if (lastVC && lastVC.isVoiceBased()) this.lastVC = lastVC;
-      } catch (error) {
-        if (error.name !== "DiscordAPIError[10003]") {
-          throw error;
-        } else {
-          log.warn("Failed to load last vc");
-        }
-      }
-
+      this.getLastChannel(server);
+      this.getLastVC(server);
       this.botRecconect();
+    }
+  }
+
+  private async getLastChannel(server: IDiscordServer) {
+    try {
+      let lastChannel = server.lastChannelId ? await this.guild.channels.fetch(server.lastChannelId.toString()) : null;
+      if (lastChannel && lastChannel.isTextBased()) this.lastChannel = lastChannel;
+    } catch (error) {
+      if (error.name !== "DiscordAPIError[10003]") {
+        throw error;
+      } else {
+        log.warn(`Failed to load last channel with id of ${server.lastChannelId} for server id = ${server.id}`);
+      }
+    }
+  }
+
+  private async getLastVC(server: IDiscordServer) {
+    try {
+      let lastVC = server.lastVCId ? await this.guild.channels.fetch(server.lastVCId.toString()) : null;
+      if (lastVC && lastVC.isVoiceBased()) this.lastVC = lastVC;
+    } catch (error) {
+      if (error.name !== "DiscordAPIError[10003]") {
+        throw error;
+      } else {
+        log.warn(`Failed to load last vc with id of ${server.lastVCId} for server id = ${server.id}`);
+      }
     }
   }
 

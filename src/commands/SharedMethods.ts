@@ -104,19 +104,19 @@ export abstract class SharedMethods {
             youtubeSearch(search, opts).then((res: { results: YouTubeSearchResults[], pageInfo: YouTubeSearchPageResults }) => {
                 const id: string = res.results[0].id;
                 resolve(id);
-            }).catch(err => {
-                if (err) console.log(err);
-                if (err.response.data.error.errors[0].reason == 'quotaExceeded') {
+            }).catch(error => {
+                if (error) console.log(error);
+                if (error.response.data.error.errors[0].reason == 'quotaExceeded') {
                     const time = this.getQuotaResetTime();
                     reject(new EmbedBuilder().setTitle("Daily YouTube Search Limit Reached!").setDescription(`Limit will reset ${time.fromNow()}`));
                 } else {
-                    reject(err);
+                    reject(error);
                 }
             });
         });
     }
 
-    public static async getMetadata(url: string, queuedBy: string, playlist?: YouTubePlaylist): Promise<IMetadata> {
+    public static async getMetadata(url: string, queuedBy: string, server: VolfbotServer, playlist?: YouTubePlaylist): Promise<IMetadata> {
         const meta = new Metadata();
         try {
             const exec = await ytdl.exec(url, {
@@ -132,7 +132,7 @@ export abstract class SharedMethods {
             meta.queuedBy = queuedBy;
             meta.playlist = playlist ? playlist : null;
         } catch (error) {
-            log.error(error);
+            this.handleError(error, server.guild);
         }
 
         return meta;
@@ -218,8 +218,8 @@ export abstract class SharedMethods {
                 url = "https://www.youtube.com/playlist?list=" + url;
             } else if (server != undefined) {
                 mediaType = MediaType.yt_search;
-                let id = await this.searchYoutube(url, server).catch(err => {
-                    return reject(err);
+                let id = await this.searchYoutube(url, server).catch(error => {
+                    return reject(error);
                 });
                 url = "https://www.youtube.com/watch?v=" + id;
             }
