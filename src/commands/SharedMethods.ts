@@ -10,7 +10,7 @@ import { IMetadata, Metadata } from "../model/Metadata";
 import { MediaQueue } from "../model/MediaQueue";
 import { MediaType } from "../model/MediaType";
 import { BotStatus } from "../model/BotStatus";
-import { YouTubePlaylist, PlayableResource } from "../model/YouTube";
+import { YouTubePlaylist, PlayableResource } from "../model/PlayableResource";
 import { YouTubeSearchOptions, YouTubeSearchPageResults, YouTubeSearchResults } from "youtube-search";
 import moment = require("moment");
 
@@ -111,7 +111,7 @@ export abstract class SharedMethods {
         });
     }
 
-    public static async getMetadata(url: string, queuedBy: string, playlist: YouTubePlaylist): Promise<IMetadata> {
+    public static async getMetadata(url: string, queuedBy: string, playlist?: YouTubePlaylist): Promise<IMetadata> {
         const meta = new Metadata();
 
         try {
@@ -126,7 +126,7 @@ export abstract class SharedMethods {
             meta.title = details.title;
             meta.length = details.duration * 1000;
             meta.queuedBy = queuedBy;
-            meta.playlist = playlist;
+            meta.playlist = playlist ? playlist : null;
 
         } catch (error) {
             log.error(error);
@@ -175,16 +175,20 @@ export abstract class SharedMethods {
 
         let playlist = new Array<PlayableResource>();
 
-        for (const vid of result.entries) {
+        for (let i = 0; i < result.entries.length; i++) {
+            const vid = result.entries[i];
+
             const url = vid.url;
             const title = result.title;
             const meta = new Metadata();
             meta.title = vid.title;
             meta.length = vid.duration * 1000;
-            meta.playlist = new YouTubePlaylist(title, result.entries.length, server);
+            meta.playlist = new YouTubePlaylist(title, result.entries.length, playlistId, server);
             meta.queuedBy = enqueuedBy;
 
-            playlist.push(new PlayableResource(server, url, meta));
+            let media = new PlayableResource(server, url, meta);
+            media.id = media.id + `${i}`;
+            playlist.push(media);
         }
 
         return playlist;
@@ -194,25 +198,15 @@ export abstract class SharedMethods {
         let mediaType: MediaType;
 
         return new Promise<[MediaType, string]>(async (resolve, reject) => {
-            if (new RegExp(/watch\?v=/).test(url)) {
-                mediaType = MediaType.yt_video;
-                url =
-                    "https://www.youtube.com/watch?v=" +
-                    url
-                        .match(/(?:v=)([^&?]*)/)
-                        .toString()
-                        .slice(2, 13);
-            } else if (new RegExp(/list=/).test(url)) {
+            if (new RegExp(/list=/).test(url)) {
                 mediaType = MediaType.yt_playlist;
                 url = url.match(/(?:list=)([^&?]*)/)[1].toString();
+            } else if (new RegExp(/watch\?v=/).test(url)) {
+                mediaType = MediaType.yt_video;
+                url = "https://www.youtube.com/watch?v=" + url.match(/(?:v=)([^&?]*)/).toString().slice(2, 13);
             } else if (new RegExp(/youtu.be/).test(url)) {
                 mediaType = MediaType.yt_video;
-                url =
-                    "https://www.youtube.com/watch?v=" +
-                    url
-                        .match(/(?:.be\/)([^&?]*)/)
-                        .toString()
-                        .slice(4, 15);
+                url = "https://www.youtube.com/watch?v=" + url.match(/(?:.be\/)([^&?]*)/).toString().slice(4, 15);
             } else if (new RegExp(/^[A-Za-z0-9-_]{11}$/).test(url)) {
                 mediaType = MediaType.yt_video;
                 url = "https://www.youtube.com/watch?v=" + url;
@@ -259,7 +253,7 @@ export abstract class SharedMethods {
             embed = new EmbedBuilder().setTitle("Now Playing").setDescription(" ");
         }
         else if (nowPlaying == undefined) {
-            embed =  new EmbedBuilder().setTitle("Now Playing").setDescription(" ");
+            embed = new EmbedBuilder().setTitle("Now Playing").setDescription(" ");
         } else {
             const metadata: Metadata = nowPlaying.meta;
             let playbackDuration = server.audioPlayer.state.playbackDuration;
