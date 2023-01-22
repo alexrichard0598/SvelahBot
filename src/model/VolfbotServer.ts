@@ -5,6 +5,7 @@ import { MediaQueue } from "./MediaQueue";
 import { Messages } from "./Messages";
 import * as fs from 'fs';
 import { PlayableResource } from "./PlayableResource";
+import { log } from "../logging";
 
 export class VolfbotServer {
   guild: Guild;
@@ -52,41 +53,67 @@ export class VolfbotServer {
   // //   }
   // // }
 
-  async updateStatusMessage(msg) {
-    if (msg instanceof Message) msg.fetch();
-    if (this.messages.status != undefined) {
-      const status: Message = this.messages.status.channel.messages.resolve(this.messages.status.id);
-      if (status != null) {
-        if (status.deletable) status.delete().catch(err => { SharedMethods.handleErr(err, this.guild) });
+  async updateStatusMessage(msg: Message) {
+    try {
+      if (msg instanceof Message) msg.fetch(true);
+      if (this.messages.status != undefined) {
+        const status: Message = await this.messages.status.fetch(true);
+        if (status != null) {
+          if (status.deletable) status.delete();
+        }
+      }
+      if (msg instanceof Message) this.messages.status = msg;
+    } catch (error) {
+      if (error.name !== "DiscordAPIError[10008]") {
+        throw error;
+      } else {
+        log.warn("Failed to delete status message");
       }
     }
-    if (msg instanceof Message) this.messages.status = msg;
+
   }
 
-  async updateNowPlayingMessage(msg) {
-    if (this.messages.nowplaying != undefined) {
-      const nowplaying: Message = this.messages.nowplaying.channel.messages.resolve(this.messages.status.id);
-      if (nowplaying != null) {
-        if (nowplaying.deletable) nowplaying.delete().catch(err => { SharedMethods.handleErr(err, this.guild) });
+  async updateNowPlayingMessage(msg: Message) {
+    try {
+      msg.fetch(true);
+      if (this.messages.nowplaying != undefined) {
+        const nowplaying: Message = await this.messages.nowplaying.fetch(true);
+        if (nowplaying != null) {
+          if (nowplaying.deletable) nowplaying.delete();
+        }
+      }
+
+      if (msg instanceof Message) this.messages.nowplaying = msg;
+    } catch (error) {
+      if (error.name !== "DiscordAPIError[10008]") {
+        throw error;
+      } else {
+        log.warn("Failed to delete now playing message");
       }
     }
-
-    if (msg instanceof Message) this.messages.nowplaying = msg;
   }
 
-  async updateQueueMessage(msg) {
-    if (msg instanceof Message) msg.fetch();
-    if (this.messages.queue != undefined) {
-      const queue: Message = this.messages.queue.channel.messages.resolve(this.messages.queue.id);
-      if (queue != null) {
-        if (queue.deletable) queue.delete().catch(err => { SharedMethods.handleErr(err, this.guild) });
+  async updateQueueMessage(msg: Message) {
+    try {
+      msg.fetch(true);
+      if (this.messages.queue != undefined) {
+        const queue: Message = await this.messages.queue.fetch(true);
+        if (queue != null) {
+          if (queue.deletable) queue.delete();
+        }
+      }
+      if (msg instanceof Message) this.messages.queue = msg;
+    } catch (error) {
+      if (error.name !== "DiscordAPIError[10008]") {
+        throw error;
+      } else {
+        log.warn("Failed to delete queue message");
       }
     }
-    if (msg instanceof Message) this.messages.queue = msg;
+
   }
 
   async disconnectBot(excludedMessages: string[] = []) {
-    //TODO: Determine where unknown message error comes from
     this.queue.clear();
     clearInterval(this.nowPlayingClock);
     clearTimeout(this.disconnectTimer);

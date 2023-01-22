@@ -4,6 +4,7 @@ import { config as configDotenv } from "dotenv";
 import { resolve } from "path/posix";
 import { log } from "./logging";
 import { ActivityType, Events, GatewayIntentBits, Interaction, Partials } from "discord.js";
+import * as fs from "fs";
 
 let client: Client;
 

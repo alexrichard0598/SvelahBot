@@ -113,7 +113,6 @@ export abstract class SharedMethods {
 
     public static async getMetadata(url: string, queuedBy: string, playlist?: YouTubePlaylist): Promise<IMetadata> {
         const meta = new Metadata();
-
         try {
             const exec = await ytdl.exec(url, {
                 output: "./tmp",
@@ -127,7 +126,6 @@ export abstract class SharedMethods {
             meta.length = details.duration * 1000;
             meta.queuedBy = queuedBy;
             meta.playlist = playlist ? playlist : null;
-
         } catch (error) {
             log.error(error);
         }
@@ -257,9 +255,22 @@ export abstract class SharedMethods {
         } else {
             const metadata: Metadata = nowPlaying.meta;
             let playbackDuration = server.audioPlayer.state.playbackDuration;
-            const durationString = `${new Date(playbackDuration).getMinutes()}:${('0' + new Date(playbackDuration).getSeconds()).slice(-2)}`;
+            const playbackDurationDate = new Date(playbackDuration);
+            let durationString;
+            if (playbackDurationDate.getUTCHours() > 0) {
+                durationString = `${playbackDurationDate.getUTCHours()}:${('0' + playbackDurationDate.getUTCMinutes()).slice(-2)}:${('0' + playbackDurationDate.getUTCSeconds()).slice(-2)}`;
+            } else {
+                durationString = `${playbackDurationDate.getUTCMinutes()}:${('0' + playbackDurationDate.getUTCSeconds()).slice(-2)}`;
+            }
+
             const length = metadata.length;
-            const lengthString = `${new Date(length).getMinutes()}:${('0' + new Date(length).getSeconds()).slice(-2)}`;
+            const lengthDate = new Date(length);
+            let lengthString;
+            if (playbackDurationDate.getUTCHours() > 0) {
+                lengthString = `${lengthDate.getUTCHours()}:${('0' + lengthDate.getUTCMinutes()).slice(-2)}:${('0' + lengthDate.getUTCSeconds()).slice(-2)}`;
+            } else {
+                lengthString = `${lengthDate.getUTCMinutes()}:${('0' + lengthDate.getUTCSeconds()).slice(-2)}`;
+            }
             const percPlayed: number = Math.ceil((playbackDuration / length) * 100);
             let msg = `[${metadata.title}](${nowPlaying.url}) [${metadata.queuedBy}]\n\n`;
             for (let i = 0; i < 33; i++) {

@@ -269,7 +269,7 @@ export abstract class Voice {
 
   @Slash({ name: "queue", description: "View the current queue" })
   async viewQueue(
-    @SlashOption({name: "page",  description: "The page of the queue to display", required: false, type: ApplicationCommandOptionType.Integer }) page: string,
+    @SlashOption({ name: "page", description: "The page of the queue to display", required: false, type: ApplicationCommandOptionType.Integer }) page: string,
     interaction: CommandInteraction
   ): Promise<void> {
     try {
@@ -335,7 +335,7 @@ export abstract class Voice {
 
   @Slash({ name: "skip", description: "Skip the currently playing song(s)" })
   async skip(
-    @SlashOption({name: "index", description: "The index of the song to skip to", type: ApplicationCommandOptionType.Integer })
+    @SlashOption({ name: "index", description: "The index of the song to skip to", type: ApplicationCommandOptionType.Integer })
     skip: string,
     interaction: CommandInteraction
   ): Promise<void> {
@@ -433,7 +433,7 @@ export abstract class Voice {
 
   @Slash({ name: "remove", description: "Remove an item at the index" })
   async removeItem(
-    @SlashOption({name: "index", description: "The index of the song to remove", type: ApplicationCommandOptionType.Integer })
+    @SlashOption({ name: "index", description: "The index of the song to remove", type: ApplicationCommandOptionType.Integer })
     indexString: string,
     interaction: CommandInteraction
   ): Promise<void> {
@@ -490,7 +490,7 @@ export abstract class Voice {
     }
   }
 
-  @On({event: "voiceStateUpdate"})
+  @On({ event: "voiceStateUpdate" })
   async voiceStatusUpdate(voiceStates: [oldState: VoiceState, newState: VoiceState], _client: Client) {
     const botUserId = "698214544560095362";
     const server = await SharedMethods.getServer(voiceStates[0].guild);
@@ -580,12 +580,10 @@ export abstract class Voice {
       return;
     } else {
 
-      let extraLength: number = 0;
+      let extraLength: number = 1;
 
-      if (!queue) {
-        if (media instanceof Array<PlayableResource>) {
-          extraLength = media.length;
-        }
+      if (media instanceof Array<PlayableResource>) {
+        extraLength = media.length;
       }
 
       server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1].setTitle(mediaStatus[1].data.title + ` — ${(await server.queue.getQueueCount()) + extraLength} Songs in Queue`)] }));
