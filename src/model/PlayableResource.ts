@@ -23,7 +23,7 @@ export class PlayableResource {
         if (this.resource == undefined || this.resource.ended) {
             const typeUrl = await SharedMethods.determineMediaType(this.url);
             if (typeUrl[0] == MediaType.yt_video || typeUrl[0] == MediaType.yt_search || typeUrl[0] == MediaType.yt_playlist) {
-                this.resource = await SharedMethods.createYoutubeResource(typeUrl[1], this.meta.queuedBy);
+                this.resource = await SharedMethods.createYoutubeResource(typeUrl[1]);
             }
         }
         return this.resource;

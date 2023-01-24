@@ -5,9 +5,12 @@ import {
   VoiceBasedChannel,
   VoiceState,
   ApplicationCommandOptionType,
+  userMention,
+  channelMention,
 } from "discord.js";
 import {
   AudioPlayerStatus,
+  VoiceConnection,
   getVoiceConnection,
 } from "@discordjs/voice";
 import { IMetadata, Metadata } from "../model/Metadata";
@@ -71,18 +74,11 @@ export abstract class Voice {
 
       const queue = server.queue; // get the server's queue
       const audioPlayer = server.audioPlayer; // get the server's audioPlayer
-      let connection = getVoiceConnection(interaction.guildId); // get the current voice connection
-
-      /* if the voice connection is undefined create a voice connection */
-      if (connection === undefined) {
-        server.updateStatusMessage(await server.lastChannel.send({ embeds: [await server.connectBot(interaction)] }));
-        connection = getVoiceConnection(interaction.guildId);
-      }
+      const connection = await this.checkForVoiceConnection(server, interaction);
 
       if (await this.dealWithMedia(interaction, url, server) === null) {
         return;
       }
-
 
       if (!audioPlayer.playable.includes(connection)) {
         connection.subscribe(audioPlayer);
@@ -119,13 +115,7 @@ export abstract class Voice {
       }
 
       const audioPlayer = server.audioPlayer; // get the server's audioPlayer
-      let connection = getVoiceConnection(interaction.guildId); // get the current voice connection
-
-      /* if the voice connection is undefined create a voice connection */
-      if (connection === undefined) {
-        server.updateStatusMessage(await server.lastChannel.send({ embeds: [await server.connectBot(interaction)] }));
-        connection = getVoiceConnection(interaction.guildId);
-      }
+      let connection = await this.checkForVoiceConnection(server, interaction);
 
       let media = await this.dealWithMedia(interaction, url, server, false);
 
@@ -209,14 +199,26 @@ export abstract class Voice {
 
       const embed = new EmbedBuilder();
       const audioPlayer = server.audioPlayer;
+      const hasQueue = await server.queue.hasMedia();
       server.setLastChannel(interaction.channel);
-      if (audioPlayer.state.status === AudioPlayerStatus.Paused) {
-        audioPlayer.unpause();
+
+      if (audioPlayer.state.status === AudioPlayerStatus.Playing) {
+        embed.setDescription("Already playing music in " + channelMention(server.lastVC.id));
+      } else if (hasQueue) {
+        this.checkForVoiceConnection(server, interaction);
+
+        if (audioPlayer.state.status === AudioPlayerStatus.Paused) {
+          audioPlayer.unpause();
+        } else {
+          server.queue.resumePlayback();
+        }
+
         embed.setDescription("Resumed queue");
-      } else if (audioPlayer.state.status === AudioPlayerStatus.Idle) {
+      } else if (!hasQueue) {
         embed.setDescription("No audio queued up");
       } else {
         embed.setDescription("Cannot resume queue");
+        server.queue.clear();
       }
       interaction.editReply({ embeds: [embed] });
 
@@ -311,13 +313,13 @@ export abstract class Voice {
         for (let i = Math.max((pageInt - 1) * 10 - 1, 0); i < queueCount; i++) {
           const media = queuedSongs[i];
           const meta = media.meta as IMetadata;
-          description += `\n${i + 1}. [${meta.title.slice(0, 256)}](${media.url}) [${meta.queuedBy}]`;
+          description += `\n${i + 1}. [${meta.title.slice(0, 256)}](${media.url}) [${userMention(meta.queuedBy)}]`;
           if (i == pageInt * 10 - 1) {
             const j = queueCount;
             const endMedia = queuedSongs[j - 1];
             const endMeta = endMedia.meta as IMetadata;
             description += '\n...';
-            description += `\n${j}. [${endMeta.title}](${endMedia.url}) [${endMeta.queuedBy}]`;
+            description += `\n${j}. [${endMeta.title}](${endMedia.url}) [${userMention(endMeta.queuedBy)}]`;
             break;
           }
         }
@@ -528,6 +530,19 @@ export abstract class Voice {
     }
   }
 
+  private async checkForVoiceConnection(server: VolfbotServer, interaction: CommandInteraction): Promise<VoiceConnection> {
+    const guildId = interaction.guild.id;
+    let connection = getVoiceConnection(guildId); // get the current voice connection
+
+    /* if the voice connection is undefined create a voice connection */
+    if (connection === undefined) {
+      server.updateStatusMessage(await server.lastChannel.send({ embeds: [await server.connectBot(interaction)] }));
+      connection = getVoiceConnection(guildId);
+    }
+
+    return connection;
+  }
+
   private checkMediaStatus(media: PlayableResource, isPlaylist: boolean, username: string): [boolean, EmbedBuilder] {
     let embed = new EmbedBuilder();
     let mediaError = false;
@@ -546,7 +561,7 @@ export abstract class Voice {
     } else {
       const meta = media.meta as IMetadata;
       embed.setTitle('Song Queued');
-      embed.setDescription(`[${meta.title}](${media.url}) [${meta.queuedBy}]`);
+      embed.setDescription(`[${meta.title}](${media.url}) [${userMention(meta.queuedBy)}]`);
     }
 
     return [mediaError, embed];
@@ -560,11 +575,11 @@ export abstract class Voice {
     let media: Array<PlayableResource>;
 
     if (mediaType[0] == MediaType.yt_playlist) {
-      media = await SharedMethods.createYoutubePlaylistResource(mediaType[1], interaction.user.username, server);
+      media = await SharedMethods.createYoutubePlaylistResource(mediaType[1], interaction.user.id, server);
     } else if (mediaType[0] == MediaType.yt_video || mediaType[0] == MediaType.yt_search) {
       media = new Array<PlayableResource>();
       let vid = new PlayableResource(server, mediaType[1]);
-      vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.username, server);
+      vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.id, server);
       media.push(vid);
     }
 
@@ -576,12 +591,12 @@ export abstract class Voice {
     const vid: PlayableResource = media[0];
 
     if (vid.meta.title === '') {
-      vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.username, server, mediaType[1]);
+      vid.meta = await SharedMethods.getMetadata(vid.url, interaction.user.id, server, mediaType[1]);
     }
 
     videoToTest = vid;
 
-    let mediaStatus = this.checkMediaStatus(videoToTest, mediaType[0] == MediaType.yt_playlist, interaction.user.username);
+    let mediaStatus = this.checkMediaStatus(videoToTest, mediaType[0] == MediaType.yt_playlist, interaction.user.id);
 
     if (mediaStatus[0]) {
       server.updateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1]] }));

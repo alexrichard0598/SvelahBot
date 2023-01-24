@@ -139,8 +139,7 @@ export abstract class SharedMethods {
     }
 
     public static async createYoutubeResource(
-        url: string,
-        _queuedBy: string
+        url: string
     ): Promise<AudioResource<unknown>> {
         const exec = youtubeDownloader.exec(
             url,
@@ -299,7 +298,7 @@ export abstract class SharedMethods {
             let playbackString = this.getTimestamp(playbackDuration, maxUnit);
 
             const percentPlayed: number = Math.ceil((playbackDuration / length) * 100);
-            let msg = `[${metadata.title}](${nowPlaying.url}) [${metadata.queuedBy}]\n\n`;
+            let msg = `[${metadata.title}](${nowPlaying.url}) [${userMention(metadata.queuedBy)}]\n\n`;
             for (let i = 0; i < 33; i++) {
                 if (percentPlayed / 3 >= i) {
                     msg += '█';
