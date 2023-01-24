@@ -82,14 +82,14 @@ export abstract class SharedMethods {
         const embed = new EmbedBuilder();
         const server = await this.getServer(guild);
         embed.setTitle("Error!");
-        embed.setDescription(`${error.message}\r\n\`\`\`${error.stack}\`\`\`\r\n**Please let the developer know**`);
+        embed.setDescription(`${error.message}\r\n\`\`\`${error.stack}\`\`\`\r\n**The developer has been notified**`);
         if (server.lastChannel !== undefined) server.lastChannel.send({ embeds: [embed] });
         log.error(error);
 
         embed.setDescription(embed.data.description);
 
         const botDevChannel = (await (await getClient().guilds.fetch('664999986974687242')).channels.fetch('888174462011342848')) as TextBasedChannel;
-        botDevChannel.send({ embeds: [embed], content: userMention('134131441175887872') });
+        botDevChannel.send({ embeds: [embed], content: userMention('134131441175887872') + "Bot error logged" });
     }
 
     public static async searchYoutube(search: string, server: VolfbotServer): Promise<string> {
@@ -278,10 +278,10 @@ export abstract class SharedMethods {
         let nowPlayingDescription = `Playing in ${channelMention(server.lastVC.id)}\r\n\r\n`;
 
         if (server.audioPlayer.state.status !== AudioPlayerStatus.Playing) {
-            embed = new EmbedBuilder().setTitle(nowPlayingTitle).setDescription(" ");
+            embed = new EmbedBuilder().setTitle(nowPlayingTitle).setDescription("Nothing.");
         }
         else if (nowPlaying == undefined) {
-            embed = new EmbedBuilder().setTitle(nowPlayingTitle).setDescription(" ");
+            embed = new EmbedBuilder().setTitle(nowPlayingTitle).setDescription("Nothing.");
         } else {
             const metadata: Metadata = nowPlaying.meta;
             const length = metadata.length;

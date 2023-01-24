@@ -8,6 +8,8 @@ import { SharedMethods } from "./commands/SharedMethods";
 
 let client: Client;
 
+//TODO: Refactor a lot of this code
+
 async function start() {
   try {
     await importx(`${__dirname}/{commands,model,guards}/*.{ts,js}`);
