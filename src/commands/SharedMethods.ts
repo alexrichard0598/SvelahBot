@@ -1,6 +1,6 @@
 import path = require("path");
 import { AudioPlayerStatus, AudioResource, createAudioResource, demuxProbe, getVoiceConnection } from "@discordjs/voice";
-import { CommandInteraction, Guild, Message, EmbedBuilder, TextBasedChannel, TextChannel, userMention, channelMention } from "discord.js";
+import { CommandInteraction, Guild, Message, EmbedBuilder, TextBasedChannel, TextChannel, userMention, channelMention, Snowflake, DiscordAPIError, TextBasedChannelMixin } from "discord.js";
 import { VolfbotServer } from "../model/VolfbotServer";
 import { log } from "../logging"
 import * as youtubeSearch from "youtube-search";
@@ -89,7 +89,7 @@ export abstract class SharedMethods {
         embed.setDescription(embed.data.description);
 
         const botDevChannel = (await (await getClient().guilds.fetch('664999986974687242')).channels.fetch('888174462011342848')) as TextBasedChannel;
-        botDevChannel.send({embeds: [embed], content: userMention('134131441175887872')});
+        botDevChannel.send({ embeds: [embed], content: userMention('134131441175887872') });
     }
 
     public static async searchYoutube(search: string, server: VolfbotServer): Promise<string> {
@@ -249,6 +249,29 @@ export abstract class SharedMethods {
         }
     }
 
+    public static messageExist(message: Message | Snowflake, channel?: TextBasedChannel): Promise<boolean> {
+        return new Promise(async (resolve, reject) => {
+            try {
+                if (message instanceof Message) {
+                    message.fetch();
+                } else if(channel !== null && channel !== undefined && channel.isTextBased) {
+                    channel.messages.fetch(message);
+                } else {
+                    reject(new Error("Unable to check if message exists, provided message was not instance of Message, and no channel was provided"));
+                }
+
+                resolve(true);
+            } catch (error) {
+                if(error.code != 10008) {
+                    reject(error);
+                } else {
+                    resolve(false);
+                }
+            }
+        })
+
+    }
+
     public static async nowPlayingEmbed(server: VolfbotServer): Promise<EmbedBuilder> {
         const nowPlaying: PlayableResource = await server.queue.currentItem();
         let embed: EmbedBuilder;
@@ -266,7 +289,7 @@ export abstract class SharedMethods {
             let lengthString = this.getTimestamp(length);
             let maxUnit: TimeUnit = TimeUnit.second;
 
-            if(lengthString.split(":").length > 2) {
+            if (lengthString.split(":").length > 2) {
                 maxUnit = TimeUnit.hour;
             } else if (lengthString.split(":").length > 1) {
                 maxUnit = TimeUnit.minute;
@@ -296,7 +319,7 @@ export abstract class SharedMethods {
         let hours = Math.floor(durationSec / 3600);
         let minutes = Math.floor(durationSec % 3600 / 60);
         let seconds = Math.floor(durationSec % 3600 % 60);
-        if(hours > 0 || largestUnit == TimeUnit.hour) {
+        if (hours > 0 || largestUnit == TimeUnit.hour) {
             timestamp = `${hours}:${('0' + minutes).slice(-2)}:${('0' + seconds).slice(-2)}`;
         } else if (minutes > 0 || largestUnit == TimeUnit.minute) {
             timestamp = `${minutes}:${('0' + seconds).slice(-2)}`;

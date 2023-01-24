@@ -104,7 +104,6 @@ export abstract class Voice {
     }
   }
 
-  //TODO: FIX THIS
   @Slash({ name: "play-now", description: "Adds item to start of the queue and starts playing it now" })
   async playNow(
     @SlashOption({ name: "media", description: "The media to play", required: true, type: ApplicationCommandOptionType.String })
@@ -152,9 +151,11 @@ export abstract class Voice {
       }
 
       await queue.setQueue(newQueue);
-      let currentItem = await queue.currentItem();
-      if (currentItem !== undefined) {
+      let currentItem = newQueue[0];
+      if (currentItem !== undefined && currentItem !== null) {
         server.playSong(currentItem);
+      } else {
+        server.lastChannel.send("Failed to play media");
       }
     } catch (error) {
       SharedMethods.handleError(error, interaction.guild);

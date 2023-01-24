@@ -42,8 +42,8 @@ export class VolfbotServer {
     try {
       let resource = await media.getResource();
       this.audioPlayer.play(resource);
-      if(!this.nowPlayingClock) {
-        this.nowPlayingClockFunction();
+      if (!this.nowPlayingClock) {
+        this.setNowPlayingClock();
       }
     } catch (error) {
       SharedMethods.handleError(error, this.guild);
@@ -52,62 +52,45 @@ export class VolfbotServer {
 
   async updateStatusMessage(msg: Message) {
     try {
-      if (msg instanceof Message) msg.fetch(true);
-      if (this.messages.status != undefined) {
-        const status: Message = await this.messages.status.fetch(true);
+      if (this.messages.status != undefined && SharedMethods.messageExist(msg)) {
+        const status: Message = await this.messages.status.fetch();
         if (status != null) {
           if (status.deletable) status.delete();
         }
       }
-      if (msg instanceof Message) this.messages.status = msg;
-    } catch (error) {
-      if (error.name !== "DiscordAPIError[10008]") {
-        SharedMethods.handleError(error, this.guild);
-      } else {
-        log.warn(`Failed to delete status message on server with id of ${this.guild.id}`);
-      }
-    }
 
+      this.messages.status = msg;
+    } catch (error) {
+      SharedMethods.handleError(error, this.guild);
+    }
   }
 
   async updateNowPlayingMessage(msg: Message) {
     try {
-      msg.fetch(true);
-      if (this.messages.nowPlaying != undefined) {
-        const nowPlaying: Message = await this.messages.nowPlaying.fetch(true);
+      if (this.messages.nowPlaying != undefined && SharedMethods.messageExist(msg)) {
+        const nowPlaying: Message = await this.messages.nowPlaying.fetch();
         if (nowPlaying != null) {
           if (nowPlaying.deletable) nowPlaying.delete();
         }
       }
-
-      if (msg instanceof Message) this.messages.nowPlaying = msg;
+      this.messages.nowPlaying = msg;
     } catch (error) {
-      if (error.name !== "DiscordAPIError[10008]") {
-        SharedMethods.handleError(error, this.guild);
-      } else {
-        log.warn(`Failed to delete now playing message on server with id of ${this.guild.id}`);
-      }
+      log.warn(`Failed to delete now playing message on server with id of ${this.guild.id}`);
     }
   }
 
   async updateQueueMessage(msg: Message) {
     try {
-      msg.fetch(true);
-      if (this.messages.queue != undefined) {
-        const queue: Message = await this.messages.queue.fetch(true);
+      if (this.messages.queue != undefined && SharedMethods.messageExist(msg)) {
+        const queue: Message = await this.messages.queue.fetch();
         if (queue != null) {
           if (queue.deletable) queue.delete();
         }
       }
-      if (msg instanceof Message) this.messages.queue = msg;
+      this.messages.queue = msg;
     } catch (error) {
-      if (error.name !== "DiscordAPIError[10008]") {
-        SharedMethods.handleError(error, this.guild);
-      } else {
-        log.warn(`Failed to delete queue message on server with id of ${this.guild.id}`);
-      }
+      log.warn(`Failed to delete queue message on server with id of ${this.guild.id}`);
     }
-
   }
 
   async disconnectBot(excludedMessages: string[] = []) {
@@ -224,7 +207,7 @@ export class VolfbotServer {
       let lastChannel = server.lastChannelId ? await this.guild.channels.fetch(server.lastChannelId.toString()) : null;
       if (lastChannel && lastChannel.isTextBased()) this.lastChannel = lastChannel;
     } catch (error) {
-      if (error.name !== "DiscordAPIError[10003]") {
+      if (error.code != 10003) {
         throw error;
       } else {
         log.warn(`Failed to load last channel with id of ${server.lastChannelId} for server id = ${server.id}`);
@@ -237,7 +220,7 @@ export class VolfbotServer {
       let lastVC = server.lastVCId ? await this.guild.channels.fetch(server.lastVCId.toString()) : null;
       if (lastVC && lastVC.isVoiceBased()) this.lastVC = lastVC;
     } catch (error) {
-      if (error.name !== "DiscordAPIError[10003]") {
+      if (error.name != 10003) {
         throw error;
       } else {
         log.warn(`Failed to load last vc with id of ${server.lastVCId} for server id = ${server.id}`);
@@ -300,7 +283,7 @@ export class VolfbotServer {
         const embed = await SharedMethods.nowPlayingEmbed(this);
         this.createNowPlayingMessage(embed);
       }
-      this.nowPlayingClockFunction();
+      this.setNowPlayingClock();
     } catch (error) {
       SharedMethods.handleError(error, this.guild);
     }
@@ -318,30 +301,29 @@ export class VolfbotServer {
     }, 300000);
   }
 
-  private async nowPlayingClockFunction() {
+  private async setNowPlayingClock() {
+    this.updateNowPlayingStatus()
+
     if (this.nowPlayingClock !== undefined) {
       clearInterval(this.nowPlayingClock);
     }
-    this.nowPlayingClock = setInterval(async () => {
-      const embed = await SharedMethods.nowPlayingEmbed(this);
-      try {
-        if (this.messages.nowPlaying) {
-          const nowPlayingMessage = await this.messages.nowPlaying.fetch();
-          if (nowPlayingMessage.editable) {
-            this.messages.nowPlaying = await nowPlayingMessage.edit({ embeds: [embed] });
-          } else {
-            this.createNowPlayingMessage(embed, nowPlayingMessage);
-          }
-        }
-      } catch (error) {
-        // Check if it's a message not found error
-        if (error.name !== "DiscordAPIError[10008]") {
-          throw error;
+    this.nowPlayingClock = setInterval(async () => this.updateNowPlayingStatus(), 5000); // Discord Rate Limits mean it is better to limit this to prevent API banning
+  }
+
+  private async updateNowPlayingStatus() {
+    const embed = await SharedMethods.nowPlayingEmbed(this);
+    try {
+      if (this.messages.nowPlaying && SharedMethods.messageExist(this.messages.nowPlaying)) {
+        const nowPlayingMessage = await this.messages.nowPlaying.fetch();
+        if (nowPlayingMessage.editable) {
+          this.messages.nowPlaying = await nowPlayingMessage.edit({ embeds: [embed] });
         } else {
-          this.createNowPlayingMessage(embed);
+          this.createNowPlayingMessage(embed, nowPlayingMessage);
         }
       }
-    }, 1000);
+    } catch (error) {
+      SharedMethods.handleError(error, this.guild);
+    }
   }
 
   private async createNowPlayingMessage(embed: EmbedBuilder, nowPlayingMessage?: Message) {
@@ -350,16 +332,5 @@ export class VolfbotServer {
     } else {
       this.messages.nowPlaying = await this.lastChannel.send({ embeds: [embed] });
     }
-
-    // TODO: Figure out how to respond to reactions
-    // // try {
-    // //   let nowPlayingMessage = await this.messages.nowPlaying.fetch();
-    // //   nowPlayingMessage.react("⏹️");
-    // // } catch (error) {
-    // //   // Check if it's a message not found error
-    // //   if (error.name !== "DiscordAPIError[10008]") {
-    // //     throw error;
-    // //   }
-    // // }
   }
 }
