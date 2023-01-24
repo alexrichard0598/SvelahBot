@@ -75,7 +75,7 @@ export class VolfbotServer {
       const bot = await this.guild.members.fetch(botId);
       const currentVC = bot.voice.channel;
 
-      if (this.lastVC.id !== currentVC.id) {
+      if (currentVC && this.lastVC.id !== currentVC.id) {
         this.SetLastVC(currentVC);
       }
 
