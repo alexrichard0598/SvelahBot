@@ -90,6 +90,20 @@ export abstract class MessageHandling {
     });
   }
 
+  public static async InitCommand({ interaction, isStatusMessage: isStatusMessage, isQueueMessage: isQueueMessage, isNowPlayingMessage: isNowPlayingMessage }: InitCommandParams): Promise<VolfbotServer> {
+    if (!interaction.deferred) {
+      const reply = await interaction.deferReply({ fetchReply: true });
+      const server = await VolfbotServer.GetServerFromGuild(interaction.guild);
+      if (isStatusMessage) await server.UpdateStatusMessage(reply);
+      if (isQueueMessage) await server.UpdateQueueMessage(reply);
+      if (isNowPlayingMessage) await server.UpdateNowPlayingMessage(reply);
+      server.SetLastChannel(interaction.channel);
+      return server;
+    } else {
+      return VolfbotServer.GetServerFromGuild(interaction.guild);
+    }
+  }
+
   public static async NowPlayingEmbed(server: VolfbotServer): Promise<EmbedBuilder> {
     try {
       const nowPlaying: PlayableResource = await server.queue.CurrentItem();
@@ -135,7 +149,7 @@ export abstract class MessageHandling {
     }
   }
 
-  private static GetTimestamp(durationMs: number, largestUnit?: TimeUnit): string {
+  public static GetTimestamp(durationMs: number, largestUnit?: TimeUnit): string {
     let timestamp = "";
     let durationSec = durationMs / 1000;
     let hours = Math.floor(durationSec / 3600);
@@ -153,8 +167,15 @@ export abstract class MessageHandling {
   }
 }
 
-enum TimeUnit {
+export enum TimeUnit {
   hour,
   minute,
   second
+}
+
+export interface InitCommandParams {
+  interaction: CommandInteraction;
+  isStatusMessage?: boolean;
+  isQueueMessage?: boolean;
+  isNowPlayingMessage?: boolean;
 }

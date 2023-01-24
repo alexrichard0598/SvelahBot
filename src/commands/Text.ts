@@ -36,21 +36,6 @@ export abstract class Text {
     }
   }
 
-  @Slash({ name: "clear-messages", description: "Clears all messages from a bot in the text channel" })
-  public async Clear(interaction: CommandInteraction): Promise<void> {
-    try {
-      await interaction.deferReply();
-      const server = await VolfbotServer.GetServerFromGuild(interaction.guild);
-      server.SetLastChannel(interaction.channel);
-      const deleting = await interaction.fetchReply();
-      const messages = await MessageHandling.RetrieveBotMessages(interaction.channel, [deleting.id]);
-
-      MessageHandling.ClearMessages(messages, interaction);
-    } catch (error) {
-      MessageHandling.LogError("Clear", error, interaction.guild);
-    }
-  }
-
   // // @Slash({name: "test-error",  description: "Throws a test error" })
   // // async TestError(interaction: CommandInteraction) {
   // //   try {
