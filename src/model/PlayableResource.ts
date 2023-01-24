@@ -1,9 +1,10 @@
 import { AudioResource } from "@discordjs/voice";
 import { Metadata } from "./Metadata";
-import { SharedMethods } from "../commands/SharedMethods";
 import { MediaType } from "./MediaType";
 import { VolfbotServer } from "./VolfbotServer";
 import { ISong, Song } from "../database/Queue";
+import { MediaQueue } from "./MediaQueue";
+import { MessageHandling } from "../functions/MessageHandling";
 
 export class PlayableResource {
     id: string;
@@ -19,19 +20,27 @@ export class PlayableResource {
         this.id = `${this.discordServerId}${Date.now()}${url.split("=")[1]}`;
     }
 
-    async getResource(): Promise<AudioResource> {
-        if (this.resource == undefined || this.resource.ended) {
-            const typeUrl = await SharedMethods.determineMediaType(this.url);
-            if (typeUrl[0] == MediaType.yt_video || typeUrl[0] == MediaType.yt_search || typeUrl[0] == MediaType.yt_playlist) {
-                this.resource = await SharedMethods.createYoutubeResource(typeUrl[1]);
+    public async GetResource(): Promise<AudioResource> {
+        try {
+            if (this.resource == undefined || this.resource.ended) {
+                const typeUrl = await MediaQueue.DetermineMediaType(this.url);
+                if (typeUrl[0] == MediaType.yt_video || typeUrl[0] == MediaType.yt_search || typeUrl[0] == MediaType.yt_playlist) {
+                    this.resource = await MediaQueue.CreateYoutubeResource(typeUrl[1]);
+                }
             }
+            return this.resource;
+        } catch (error) {
+            MessageHandling.LogError("GetResource", error);
         }
-        return this.resource;
     }
 
-    async setResource(resource: AudioResource): Promise<this> {
-        this.resource = resource;
-        return this;
+    public async SetResource(resource: AudioResource): Promise<this> {
+        try {
+            this.resource = resource;
+            return this;
+        } catch (error) {
+            MessageHandling.LogError("GetResource", error);
+        }
     }
 
     toISong(): ISong {
@@ -39,7 +48,7 @@ export class PlayableResource {
         return song;
     }
 
-    static async parseFromISong(song: ISong): Promise<PlayableResource> {
+    static async ParseFromISong(song: ISong): Promise<PlayableResource> {
         if (song == null) return null;
         let media = new PlayableResource(song.discordServerId);
         media.resource = undefined;

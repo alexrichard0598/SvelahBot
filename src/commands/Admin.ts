@@ -10,7 +10,7 @@ export abstract class Voice {
     description: "Shutdowns the bot, can only be accessed by bot admins",
   })
   @Guard(IsAdmin)
-  async shutdown(interaction: CommandInteraction): Promise<void> {
+  public async Shutdown(interaction: CommandInteraction): Promise<void> {
     interaction.reply("Shutting Down").then(() => {
       getClient().destroy();
     });

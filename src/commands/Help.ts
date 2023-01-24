@@ -6,11 +6,11 @@ import * as path from "path";
 @Discord()
 export abstract class Help {
   @Slash({name: "help", description: "A help message" })
-  async help(interaction: CommandInteraction): Promise<void> {
+  public async Help(interaction: CommandInteraction): Promise<void> {
     const helpFile = path.join(__dirname, "..", "..", "help.txt");
     const helpText = fs.existsSync(helpFile)
       ? fs.readFileSync(helpFile, "utf-8")
-      : "Help me!";
+      : "Could not find help message";
 
     let embed = new EmbedBuilder();
 

@@ -43,7 +43,7 @@ export class Song implements ISong {
 export class Queue extends Array<ISong>{ }
 
 export abstract class QueueManager {
-  public static async getServerQueue(serverId: string): Promise<Queue> {
+  public static async GetServerQueue(serverId: string): Promise<Queue> {
     return new Promise(
       function (resolve, reject) {
         let db = new DataBase();
@@ -60,8 +60,8 @@ export abstract class QueueManager {
     );
   }
 
-  public static async dequeueSong(serverId: string): Promise<Song> {
-    let song = await QueueManager.getCurrentSong(serverId);
+  public static async DequeueSong(serverId: string): Promise<Song> {
+    let song = await QueueManager.GetCurrentSong(serverId);
 
     return new Promise(
       function (resolve, reject) {
@@ -78,7 +78,7 @@ export abstract class QueueManager {
     );
   }
 
-  public static async getQueueCount(serverId: string): Promise<number> {
+  public static async GetQueueCount(serverId: string): Promise<number> {
     return new Promise(
       function (resolve, reject) {
         let db = new DataBase();
@@ -99,10 +99,10 @@ export abstract class QueueManager {
     );
   }
 
-  public static async enqueueSongs(songs: ISong[]): Promise<Queue> {
+  public static async EnqueueSongs(songs: ISong[]): Promise<Queue> {
     if (songs[0] == undefined) throw new Error("Must provide a song to queue");
 
-    let count = (await QueueManager.getQueueCount(songs[0].discordServerId)) + 1;
+    let count = (await QueueManager.GetQueueCount(songs[0].discordServerId)) + 1;
     for (let i = 0; i < songs.length; i++) {
       songs[i].queueOrder = count + i;
     }
@@ -123,7 +123,7 @@ export abstract class QueueManager {
     );
   }
 
-  public static async getCurrentSong(serverId: string): Promise<Song> {
+  public static async GetCurrentSong(serverId: string): Promise<Song> {
     return new Promise(
       function (resolve, reject) {
         let db = new DataBase();
@@ -147,7 +147,7 @@ export abstract class QueueManager {
     );
   }
 
-  public static async getSong(songId: number): Promise<Song> {
+  public static async GetSong(songId: number): Promise<Song> {
     return new Promise(
       function (resolve, reject) {
         let db = new DataBase();
@@ -171,7 +171,7 @@ export abstract class QueueManager {
     );
   }
 
-  public static async getSongAt(serverId: string, queueOrder: number): Promise<Song> {
+  public static async GetSongAt(serverId: string, queueOrder: number): Promise<Song> {
     return new Promise(
       function (resolve, reject) {
         let db = new DataBase();
@@ -195,8 +195,8 @@ export abstract class QueueManager {
     );
   }
 
-  public static async removeSongAt(serverId: string, queueOrder: number): Promise<ISong> {
-    let song = await QueueManager.getCurrentSong(serverId);
+  public static async RemoveSongAt(serverId: string, queueOrder: number): Promise<ISong> {
+    let song = await QueueManager.GetCurrentSong(serverId);
 
     return new Promise(
       function (resolve, reject) {
@@ -213,7 +213,7 @@ export abstract class QueueManager {
     );
   }
 
-  public static async clearQueue(serverId: string) {
+  public static async ClearQueue(serverId: string) {
     return new Promise(
       function (resolve, reject) {
         let db = new DataBase();

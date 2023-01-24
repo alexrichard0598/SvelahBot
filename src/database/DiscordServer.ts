@@ -19,7 +19,7 @@ export class DiscordServer implements IDiscordServer {
 }
 
 export abstract class DiscordServerManager {
-  public static async getAllServers(): Promise<Array<IDiscordServer>> {
+  public static async GetAllServers(): Promise<Array<IDiscordServer>> {
     return new Promise(
       function (resolve, reject) {
         let db = new DataBase();
@@ -37,7 +37,7 @@ export abstract class DiscordServerManager {
       });
   }
 
-  public static async getServer(id: string): Promise<IDiscordServer | null> {
+  public static async GetServer(id: string): Promise<IDiscordServer | null> {
     return new Promise(
       function (resolve, reject) {
         let db = new DataBase();
@@ -58,7 +58,7 @@ export abstract class DiscordServerManager {
       });
   }
 
-  public static async addServer(server: IDiscordServer): Promise<void> {
+  public static async AddServer(server: IDiscordServer): Promise<void> {
     return new Promise(
       function (resolve, reject) {
         let db = new DataBase();
@@ -73,7 +73,7 @@ export abstract class DiscordServerManager {
       });
   }
 
-  public static async updateServer(server: IDiscordServer): Promise<void> {
+  public static async UpdateServer(server: IDiscordServer): Promise<void> {
     return new Promise(
       function (resolve, reject) {
         let db = new DataBase();

@@ -1,20 +1,21 @@
 import { Discord, Slash } from "discordx";
 import { CommandInteraction, EmbedBuilder } from "discord.js";
-import { SharedMethods } from "./SharedMethods";
 import * as fs from 'fs';
 import { KnownUser } from "../model/KnownUsers";
+import { MessageHandling } from "../functions/MessageHandling";
+import { VolfbotServer } from "../model/VolfbotServer";
 
 @Discord()
 export abstract class Text {
   @Slash({ name: "hello", description: "A hello world message" })
-  async hello(interaction: CommandInteraction): Promise<void> {
+  public async Hello(interaction: CommandInteraction): Promise<void> {
     interaction.reply("Hello world!").catch((error) => {
-      SharedMethods.handleError(error, interaction.guild);
+      MessageHandling.LogError("Hello", error, interaction.guild);
     });
   }
 
   @Slash({ name: "heya", description: "Replies to the user" })
-  async heya(interaction: CommandInteraction): Promise<void> {
+  public async Heya(interaction: CommandInteraction): Promise<void> {
     try {
       interaction.reply("Heya " + interaction.user.username)
 
@@ -28,39 +29,37 @@ export abstract class Text {
         let info = Object.create({ name: "🤖User Recognized🤖", value: `${knownUser.message}` });
 
         msg.addFields(info);
-        interaction.followUp({ embeds: [msg] }).catch((error) => {
-          SharedMethods.handleError(error, interaction.guild);
-        });
+        interaction.followUp({ embeds: [msg] });
       }
     } catch (error) {
-      SharedMethods.handleError(error, interaction.guild);
+      MessageHandling.LogError("Heya", error, interaction.guild);
     }
   }
 
   @Slash({ name: "clear-messages", description: "Clears all messages from a bot in the text channel" })
-  async clear(interaction: CommandInteraction): Promise<void> {
+  public async Clear(interaction: CommandInteraction): Promise<void> {
     try {
       await interaction.deferReply();
-      const server = await SharedMethods.getServer(interaction.guild);
-      server.setLastChannel(interaction.channel);
+      const server = await VolfbotServer.GetServerFromGuild(interaction.guild);
+      server.SetLastChannel(interaction.channel);
       const deleting = await interaction.fetchReply();
-      const messages = await SharedMethods.retrieveBotMessages(interaction.channel, [deleting.id]);
+      const messages = await MessageHandling.RetrieveBotMessages(interaction.channel, [deleting.id]);
 
-      SharedMethods.clearMessages(messages, interaction);
+      MessageHandling.ClearMessages(messages, interaction);
     } catch (error) {
-      SharedMethods.handleError(error, interaction.guild);
+      MessageHandling.LogError("Clear", error, interaction.guild);
     }
   }
 
   // // @Slash({name: "test-error",  description: "Throws a test error" })
-  // // async testError(interaction: CommandInteraction) {
+  // // async TestError(interaction: CommandInteraction) {
   // //   try {
   // //     await interaction.deferReply();
   // //     const server = await SharedMethods.getServer(interaction.guild);
   // //     server.setLastChannel(interaction.channel);
   // //     throw new Error("This is a test error");
   // //   } catch (error) {
-  // //     SharedMethods.handleError(error, interaction.guild);
+  // //     MessageHandling.handleError(error, interaction.guild);
   // //   }
   // // }
 }

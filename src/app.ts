@@ -4,13 +4,11 @@ import { config as configDotenv } from "dotenv";
 import { resolve } from "path/posix";
 import { log } from "./logging";
 import { ActivityType, Events, GatewayIntentBits, Guild, Interaction, Partials } from "discord.js";
-import { SharedMethods } from "./commands/SharedMethods";
+import { VolfbotServer } from "./model/VolfbotServer";
 
 let client: Client;
 
-//TODO: Refactor a lot of this code
-
-async function start() {
+async function Start() {
   try {
     await importx(`${__dirname}/{commands,model,guards}/*.{ts,js}`);
 
@@ -68,7 +66,7 @@ async function start() {
 
     await client.login(process.env.TOKEN).then(() => {
       log.info("Volfbot Online");
-      client.guilds.cache.forEach((guild: Guild) => SharedMethods.getServer(guild));
+      client.guilds.cache.forEach((guild: Guild) => VolfbotServer.GetServerFromGuild(guild));
     });
   } catch (error) {
     log.error(error);
@@ -79,4 +77,4 @@ export function getClient(): Client {
   return client;
 }
 
-start();
+Start();

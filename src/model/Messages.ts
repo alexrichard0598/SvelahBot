@@ -1,6 +1,6 @@
 import { Message } from "discord.js";
 
-export class Messages {
+export class ServerMessages {
     status: Message;
     queue: Message;
     nowPlaying: Message;

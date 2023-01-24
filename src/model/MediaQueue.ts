@@ -1,7 +1,16 @@
-import { PlayableResource } from "./PlayableResource";
+import { PlayableResource, YouTubePlaylist } from "./PlayableResource";
 import { ISong, Queue, QueueManager } from "../database/Queue";
 import { VolfbotServer } from "./VolfbotServer";
-import { SharedMethods } from "../commands/SharedMethods";
+import { MessageHandling } from "../functions/MessageHandling";
+import * as youtubeSearch from "youtube-search";
+import * as youtubeDL from "youtube-dl-exec"
+const youtubeDownloader = youtubeDL.create("/bin/ytdlp");
+import { YouTubeSearchOptions, YouTubeSearchPageResults, YouTubeSearchResults } from "youtube-search";
+import { AudioResource, demuxProbe, createAudioResource } from "@discordjs/voice";
+import { EmbedBuilder } from "discord.js";
+import { MediaType } from "./MediaType";
+import { IMetadata, Metadata } from "./Metadata";
+import moment = require("moment");
 
 export class MediaQueue {
   private looping: boolean = false;
@@ -12,7 +21,165 @@ export class MediaQueue {
     this.server = server;
   }
 
-  async enqueue(media: Array<PlayableResource>) {
+  private static async SearchYoutube(search: string, server: VolfbotServer): Promise<string> {
+    let opts: YouTubeSearchOptions = {
+      maxResults: 1,
+      key: process.env.GOOGLE_API,
+    };
+
+    server.UpdateStatusMessage(await server.lastChannel.send({ embeds: [new EmbedBuilder().setDescription(`Searching youtube for "${search}"`)] }));
+
+    return new Promise<string>((resolve, reject) => {
+      youtubeSearch(search, opts).then((res: { results: YouTubeSearchResults[], pageInfo: YouTubeSearchPageResults }) => {
+        const id: string = res.results[0].id;
+        resolve(id);
+      }).catch(error => {
+        if (error) console.log(error);
+        if (error.response.data.error.errors[0].reason == 'quotaExceeded') {
+          const time = this.GetYouTubeQuotaResetTime();
+          reject(new EmbedBuilder().setTitle("Daily YouTube Search Limit Reached!").setDescription(`Limit will reset ${time.fromNow()}`));
+        } else {
+          reject(error);
+        }
+      });
+    });
+  }
+
+  public static async GetMetadata(url: string, queuedBy: string, server: VolfbotServer, playlist?: YouTubePlaylist): Promise<IMetadata> {
+    try {
+      const meta = new Metadata();
+      const exec = await youtubeDownloader.exec(url, {
+        output: "./tmp",
+        dumpSingleJson: true,
+        simulate: true,
+      });
+
+      const details = JSON.parse(exec.stdout);
+
+      meta.title = details.title;
+      meta.length = details.duration * 1000;
+      meta.queuedBy = queuedBy;
+      meta.playlist = playlist ? playlist : null;
+
+      return meta;
+    } catch (error) {
+      MessageHandling.LogError("GetMetadata", error, server);
+    }
+  }
+
+  public static async CreateYoutubeResource(
+    url: string
+  ): Promise<AudioResource<unknown>> {
+    try {
+      const exec = youtubeDownloader.exec(
+        url,
+        {
+          output: "-",
+          quiet: true,
+          format: "bestaudio[ext=webm][acodec=opus][asr=48000]",
+          limitRate: "100k",
+        },
+        { stdio: ["ignore", "pipe", "ignore"] }
+      );
+      const ytStream = exec.stdout;
+
+      let audioResource: AudioResource;
+
+      const { stream, type } = await demuxProbe(ytStream);
+      audioResource = createAudioResource(stream, { inputType: type });
+
+      return audioResource;
+    } catch (error) {
+      MessageHandling.LogError("CreateYoutubeResource", error);
+    }
+  }
+
+  public static async CreateYoutubePlaylistResource(
+    playlistId: string,
+    enqueuedBy: string,
+    server: VolfbotServer
+  ): Promise<Array<PlayableResource>> {
+    try {
+      const exec = await youtubeDownloader.exec(playlistId, {
+        dumpSingleJson: true,
+        simulate: true,
+        flatPlaylist: true
+      });
+
+      const result = JSON.parse(exec.stdout);
+
+      let playlist = new Array<PlayableResource>();
+
+      for (let i = 0; i < result.entries.length; i++) {
+        const vid = result.entries[i];
+
+        const url = vid.url;
+        const title = result.title;
+        const meta = new Metadata();
+        meta.title = vid.title;
+        meta.length = vid.duration * 1000;
+        meta.playlist = new YouTubePlaylist(title, result.entries.length, playlistId, server);
+        meta.queuedBy = enqueuedBy;
+
+        let media = new PlayableResource(server, url, meta);
+        media.id = media.id + `${i}`;
+        playlist.push(media);
+      }
+
+      return playlist;
+    } catch (error) {
+      MessageHandling.LogError("CreateYoutubePlaylistResource", error, server);
+    }
+  }
+
+  public static async DetermineMediaType(url: string, server?: VolfbotServer): Promise<[MediaType, string]> {
+
+    return new Promise<[MediaType, string]>(async (resolve, reject) => {
+      try {
+        let mediaType: MediaType;
+        if (new RegExp(/list=/).test(url)) {
+          mediaType = MediaType.yt_playlist;
+          url = url.match(/(?:list=)([^&?]*)/)[1].toString();
+        } else if (new RegExp(/watch\?v=/).test(url)) {
+          mediaType = MediaType.yt_video;
+          url = "https://www.youtube.com/watch?v=" + url.match(/(?:v=)([^&?]*)/).toString().slice(2, 13);
+        } else if (new RegExp(/youtu\.be/).test(url)) {
+          mediaType = MediaType.yt_video;
+          url = "https://www.youtube.com/watch?v=" + url.match(/(?:.be\/)([^&?]*)/).toString().slice(4, 15);
+        } else if (new RegExp(/^[A-Za-z0-9-_]{11}$/).test(url)) {
+          mediaType = MediaType.yt_video;
+          url = "https://www.youtube.com/watch?v=" + url;
+        } else if (new RegExp(/^[A-Za-z0-9-_]{34}$/).test(url)) {
+          mediaType = MediaType.yt_playlist;
+          url = "https://www.youtube.com/playlist?list=" + url;
+        } else if (server != undefined) {
+          mediaType = MediaType.yt_search;
+          let id = await this.SearchYoutube(url, server).catch(error => {
+            return reject(error);
+          });
+          url = "https://www.youtube.com/watch?v=" + id;
+        }
+        resolve([mediaType, url]);
+      } catch (error) {
+        MessageHandling.LogError("DetermineMediaType", error, server);
+      }
+    });
+
+  }
+
+  private static GetYouTubeQuotaResetTime() {
+    let time = moment().hour(0).minute(0);
+    if (time.isDST()) {
+      time = time.add(1, 'day');
+      time = time.utcOffset(-480);
+    } else {
+      time = time.add(1, 'day');
+      time = time.utcOffset(-420);
+    }
+    return time;
+  }
+
+  public async Enqueue(media: Array<PlayableResource>) {
     try {
       let songs: Array<ISong> = new Array<ISong>();
       media.forEach((video) => {
@@ -25,133 +192,133 @@ export class MediaQueue {
         }
       });
 
-      QueueManager.enqueueSongs(songs);
+      QueueManager.EnqueueSongs(songs);
     } catch (error) {
-      SharedMethods.handleError(error, this.server.guild);
+      MessageHandling.LogError("Enqueue", error, this.server);
     }
 
   }
 
-  async dequeue(index: number = 1): Promise<void> {
+  public async Dequeue(index: number = 1): Promise<void> {
     try {
       for (let i = 0; i < index; i++) {
-        let song = await QueueManager.dequeueSong(this.server.id);
-        if (this.looping) await QueueManager.enqueueSongs([song]);
+        let song = await QueueManager.DequeueSong(this.server.id);
+        if (this.looping) await QueueManager.EnqueueSongs([song]);
         this.currentSong = undefined;
       }
     } catch (error) {
-      SharedMethods.handleError(error, this.server.guild);
+      MessageHandling.LogError("Dequeue", error, this.server);
     }
 
   }
 
-  async clear(keepCurrentSong = false) {
+  public async Clear(keepCurrentSong = false) {
     try {
-      let currentSong = await this.currentItem();
-      await QueueManager.clearQueue(this.server.id);
+      let currentSong = await this.CurrentItem();
+      await QueueManager.ClearQueue(this.server.id);
       if (keepCurrentSong) {
-        QueueManager.enqueueSongs([currentSong.toISong()]);
+        QueueManager.EnqueueSongs([currentSong.toISong()]);
       } else {
         this.looping = false;
       }
     }
     catch (error) {
-      SharedMethods.handleError(error, this.server.guild);
+      MessageHandling.LogError("Clear", error, this.server);
     }
   }
 
-  async getQueueCount(): Promise<number> {
+  public async GetQueueCount(): Promise<number> {
     try {
-      return await QueueManager.getQueueCount(this.server.id);
+      return await QueueManager.GetQueueCount(this.server.id);
     } catch (error) {
-      SharedMethods.handleError(error, this.server.guild);
+      MessageHandling.LogError("GetQueueCount", error, this.server);
     }
   }
 
-  async getQueue(): Promise<PlayableResource[]> {
+  public async GetQueue(): Promise<PlayableResource[]> {
     try {
-      let queue = await QueueManager.getServerQueue(this.server.id);
-      return this.mediaQueueFromQueue(queue);
+      let queue = await QueueManager.GetServerQueue(this.server.id);
+      return this.MediaQueueFromQueue(queue);
     } catch (error) {
-      SharedMethods.handleError(error, this.server.guild);
+      MessageHandling.LogError("GetQueue", error, this.server);
     }
   }
 
-  async setQueue(newQueue: Array<PlayableResource>) {
+  public async SetQueue(newQueue: Array<PlayableResource>) {
     try {
-      await this.clear();
+      await this.Clear();
       let queue = new Array<ISong>();
       newQueue.forEach(item => {
         queue.push(item.toISong());
       })
-      QueueManager.enqueueSongs(queue);
+      QueueManager.EnqueueSongs(queue);
     } catch (error) {
-      SharedMethods.handleError(error, this.server.guild);
+      MessageHandling.LogError("SetQueue", error, this.server);
     }
   }
 
-  async getItem(id: number): Promise<PlayableResource> {
+  public async GetItem(id: number): Promise<PlayableResource> {
     try {
-      let song = await QueueManager.getSong(id);
-      return PlayableResource.parseFromISong(song);
+      let song = await QueueManager.GetSong(id);
+      return PlayableResource.ParseFromISong(song);
     } catch (error) {
-      SharedMethods.handleError(error, this.server.guild);
+      MessageHandling.LogError("GetItem", error, this.server);
     }
   }
 
-  async getItemAt(index: number): Promise<PlayableResource> {
+  public async GetItemAt(index: number): Promise<PlayableResource> {
     try {
-      let song = await QueueManager.getSongAt(this.server.id, index);
-      return PlayableResource.parseFromISong(song);
+      let song = await QueueManager.GetSongAt(this.server.id, index);
+      return PlayableResource.ParseFromISong(song);
     } catch (error) {
-      SharedMethods.handleError(error, this.server.guild);
+      MessageHandling.LogError("GetItemAt", error, this.server);
     }
   }
 
-  async getTotalLength(): Promise<number> {
+  public async GetTotalLength(): Promise<number> {
     try {
       let length = 0;
-      (await this.getQueue()).forEach(v => length += v.meta.length);
+      (await this.GetQueue()).forEach(v => length += v.meta.length);
       return length;
     } catch (error) {
-      SharedMethods.handleError(error, this.server.guild);
+      MessageHandling.LogError("GetTotalLength", error, this.server);
     }
 
   }
 
-  async hasMedia(): Promise<boolean> {
+  public async HasMedia(): Promise<boolean> {
     try {
-      return (await QueueManager.getQueueCount(this.server.id)) != 0;
+      return (await QueueManager.GetQueueCount(this.server.id)) != 0;
     } catch (error) {
-      SharedMethods.handleError(error, this.server.guild);
+      MessageHandling.LogError("HasMedia", error, this.server);
     }
   }
 
-  async currentItem(): Promise<PlayableResource | null> {
+  public async CurrentItem(): Promise<PlayableResource | null> {
     try {
       if (this.currentSong == undefined) {
-        let song = await QueueManager.getCurrentSong(this.server.id);
+        let song = await QueueManager.GetCurrentSong(this.server.id);
         if (song == null) return null;
-        this.currentSong = await PlayableResource.parseFromISong(song);
+        this.currentSong = await PlayableResource.ParseFromISong(song);
       }
       return this.currentSong;
     } catch (error) {
-      SharedMethods.handleError(error, this.server.guild);
+      MessageHandling.LogError("CurrentItem", error, this.server);
     }
   }
 
-  async resumePlayback(): Promise<PlayableResource | null> {
+  public async ResumePlayback(): Promise<PlayableResource | null> {
     try {
       let song = null;
 
-      if (this.hasMedia()) {
-        song = await this.currentItem();
-        this.server.playSong(song);
+      if (this.HasMedia()) {
+        song = await this.CurrentItem();
+        this.server.PlaySong(song);
       }
 
       return song;
     } catch (error) {
-      SharedMethods.handleError(error, this.server.guild);
+      MessageHandling.LogError("ResumePlayback", error, this.server);
     }
   }
 
@@ -163,33 +330,33 @@ export class MediaQueue {
     this.looping = false;
   }
 
-  async shuffle() {
+  public async Shuffle() {
     try {
-      let copyQueue = await this.getQueue();
-      let shuffledQueue = await this.getQueue();
+      let copyQueue = await this.GetQueue();
+      let shuffledQueue = await this.GetQueue();
       while (copyQueue.length > 0) {
         const j = Math.floor(Math.random() * (copyQueue.length))
         shuffledQueue.push(copyQueue[j]);
         copyQueue = copyQueue.slice(0, j).concat(copyQueue.slice(j + 1));
       }
-      this.setQueue(shuffledQueue);
+      this.SetQueue(shuffledQueue);
     } catch (error) {
-      SharedMethods.handleError(error, this.server.guild);
+      MessageHandling.LogError("Shuffle", error, this.server);
     }
   }
 
-  async removeItemAt(i: number): Promise<ISong> {
+  public async RemoveItemAt(i: number): Promise<ISong> {
     try {
-      return await QueueManager.removeSongAt(this.server.id, i);
+      return await QueueManager.RemoveSongAt(this.server.id, i);
     } catch (error) {
-      SharedMethods.handleError(error, this.server.guild);
+      MessageHandling.LogError("RemoveItemAt", error, this.server);
     }
   }
 
-  private mediaQueueFromQueue(queue: Queue): PlayableResource[] {
+  private MediaQueueFromQueue(queue: Queue): PlayableResource[] {
     let mediaQueue = new Array<PlayableResource>();
     queue.forEach(async (song) => {
-      let media = await PlayableResource.parseFromISong(song);
+      let media = await PlayableResource.ParseFromISong(song);
       mediaQueue.push(media);
     });
 
