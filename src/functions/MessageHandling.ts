@@ -107,9 +107,11 @@ export abstract class MessageHandling {
   public static async NowPlayingEmbed(server: VolfbotServer): Promise<EmbedBuilder> {
     try {
       const nowPlaying: PlayableResource = await server.queue.CurrentItem();
+      const currentVC = await server.GetCurrentVC();
+      if(!currentVC) return;
       let embed: EmbedBuilder;
       let nowPlayingTitle = `Now Playing`;
-      let nowPlayingDescription = `Playing in ${channelMention((await server.GetCurrentVC()).id)}\r\n\r\n`;
+      let nowPlayingDescription = `Playing in ${channelMention(currentVC.id)}\r\n\r\n`;
 
       if (server.audioPlayer.state.status !== AudioPlayerStatus.Playing) {
         embed = new EmbedBuilder().setTitle(nowPlayingTitle).setDescription("Nothing.");

@@ -398,7 +398,6 @@ export abstract class Voice {
     }
   }
 
-  //TODO: Fix this
   @Slash({ name: "shuffle", description: "Shuffle the current queue" })
   public async Shuffle(interaction: CommandInteraction): Promise<void> {
     try {
