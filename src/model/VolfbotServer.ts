@@ -360,7 +360,7 @@ export class VolfbotServer {
   private async UpdateNowPlayingStatus() {
     const embed = await MessageHandling.NowPlayingEmbed(this);
     try {
-      if (this.messages.nowPlaying && MessageHandling.MessageExist(this.messages.nowPlaying)) {
+      if (this.messages.nowPlaying && await MessageHandling.MessageExist(this.messages.nowPlaying)) {
         const nowPlayingMessage = await this.messages.nowPlaying.fetch();
         if (nowPlayingMessage.editable) {
           this.messages.nowPlaying = await nowPlayingMessage.edit({ embeds: [embed] });

@@ -5,6 +5,7 @@ import { PlayableResource } from "../model/PlayableResource";
 import { VolfbotServer } from "../model/VolfbotServer";
 import { getClient } from "../app";
 import { log } from "../logging";
+import { DiscordError, ErrorManager } from "../database/Errors";
 
 export abstract class MessageHandling {
   public static async RetrieveBotMessages(channel: GuildTextBasedChannel, exclude: string[] = []): Promise<Array<Message>> {
@@ -49,23 +50,30 @@ export abstract class MessageHandling {
   }
 
   public static async LogError(caller: string, error: Error, guild?: Guild | VolfbotServer) {
-    const embed = new EmbedBuilder();
-    embed.setTitle("Error!");
-    embed.setDescription(`${error.message}\r\n\`\`\`${error.stack}\`\`\`\r\n**The developer has been notified**`);
-    if (guild) {
-      let server: VolfbotServer;
-      if (guild instanceof VolfbotServer) {
-        server = guild;
-      } else {
-        server = await VolfbotServer.GetServerFromGuild(guild);
+    let lastError = await ErrorManager.getLastError();
+    let currentDate = new Date();
+    if (lastError.dateTime.getTime() - currentDate.getTime() < 30000) {
+      const embed = new EmbedBuilder();
+      embed.setTitle("Error!");
+      embed.setDescription(`${error.message}\r\n\`\`\`${error.stack}\`\`\`\r\n**The developer has been notified**`);
+      if (guild) {
+        let server: VolfbotServer;
+        if (guild instanceof VolfbotServer) {
+          server = guild;
+        } else {
+          server = await VolfbotServer.GetServerFromGuild(guild);
+        }
+
+        if (server.lastChannel !== undefined) server.lastChannel.send({ embeds: [embed] });
       }
 
-      if (server.lastChannel !== undefined) server.lastChannel.send({ embeds: [embed] });
-    }
+      log.error(error);
+      const botDevChannel = (await (await getClient().guilds.fetch('664999986974687242')).channels.fetch('888174462011342848')) as GuildTextBasedChannel;
+      botDevChannel.send({ embeds: [embed], content: userMention('134131441175887872') + " An error has occurred in " + caller });
 
-    log.error(error);
-    const botDevChannel = (await (await getClient().guilds.fetch('664999986974687242')).channels.fetch('888174462011342848')) as GuildTextBasedChannel;
-    botDevChannel.send({ embeds: [embed], content: userMention('134131441175887872') + " An error has occurred in " + caller });
+      let newError = new DiscordError(currentDate, error.message + ' ' + error.stack);
+      ErrorManager.addError(newError);
+    }
   }
 
   public static MessageExist(message: Message | Snowflake, channel?: GuildTextBasedChannel): Promise<boolean> {
@@ -108,7 +116,7 @@ export abstract class MessageHandling {
     try {
       const nowPlaying: PlayableResource = await server.queue.CurrentItem();
       const currentVC = await server.GetCurrentVC();
-      if(!currentVC) return;
+      if (!currentVC) return;
       let embed: EmbedBuilder;
       let nowPlayingTitle = `Now Playing`;
       let nowPlayingDescription = `Playing in ${channelMention(currentVC.id)}\r\n\r\n`;
