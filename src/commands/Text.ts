@@ -36,15 +36,15 @@ export abstract class Text {
     }
   }
 
-  // // @Slash({name: "test-error",  description: "Throws a test error" })
-  // // async TestError(interaction: CommandInteraction) {
-  // //   try {
-  // //     await interaction.deferReply();
-  // //     const server = await SharedMethods.getServer(interaction.guild);
-  // //     server.setLastChannel(interaction.channel);
-  // //     throw new Error("This is a test error");
-  // //   } catch (error) {
-  // //     MessageHandling.handleError(error, interaction.guild);
-  // //   }
-  // // }
+  @Slash({name: "test-error",  description: "Throws a test error" })
+  async TestError(interaction: CommandInteraction) {
+    try {
+      await interaction.deferReply();
+      const server = await VolfbotServer.GetServerFromGuild(interaction.guild);
+      server.SetLastChannel(interaction.channel);
+      throw new Error("This is a test error");
+    } catch (error) {
+      MessageHandling.LogError("TestError", error, interaction.guild);
+    }
+  }
 }

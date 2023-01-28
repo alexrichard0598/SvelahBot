@@ -99,7 +99,7 @@ export class VolfbotServer {
 
   public async UpdateStatusMessage(msg: Message) {
     try {
-      if (this.messages.status != undefined && MessageHandling.MessageExist(msg)) {
+      if (this.messages.status != undefined && await MessageHandling.MessageExist(msg)) {
         const status: Message = await this.messages.status.fetch();
         if (status != null) {
           if (status.deletable) status.delete();
@@ -114,7 +114,7 @@ export class VolfbotServer {
 
   public async UpdateNowPlayingMessage(msg: Message) {
     try {
-      if (this.messages.nowPlaying != undefined && MessageHandling.MessageExist(msg)) {
+      if (this.messages.nowPlaying != undefined && await MessageHandling.MessageExist(msg)) {
         const nowPlaying: Message = await this.messages.nowPlaying.fetch();
         if (nowPlaying != null) {
           if (nowPlaying.deletable) nowPlaying.delete();
@@ -128,7 +128,7 @@ export class VolfbotServer {
 
   public async UpdateQueueMessage(msg: Message) {
     try {
-      if (this.messages.queue != undefined && MessageHandling.MessageExist(msg)) {
+      if (this.messages.queue != undefined && await MessageHandling.MessageExist(msg)) {
         const queue: Message = await this.messages.queue.fetch();
         if (queue != null) {
           if (queue.deletable) queue.delete();

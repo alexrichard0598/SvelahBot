@@ -2,17 +2,17 @@ import { DataBase } from "./DataBase";
 
 export interface IDiscordError {
   id: string;
-  dateTime: Date;
+  errorTime: Date;
   errorMessage: string;
 }
 
 export class DiscordError implements IDiscordError {
   id: string;
-  dateTime: Date;
+  errorTime: Date;
   errorMessage: string;
 
-  constructor(dateTime, errorMessage) {
-    this.dateTime = dateTime;
+  constructor(errorTime, errorMessage) {
+    this.errorTime = errorTime;
     this.errorMessage = errorMessage;
   }
 }
@@ -23,13 +23,18 @@ export abstract class ErrorManager {
       function (resolve, reject) {
         let db = new DataBase();
         db.connection.connect();
+        let discordError: IDiscordError;
 
-        db.connection.query('SELECT TOP 1 * FROM Errors', function (error, results, fields) {
-          results.forEach(result => {
-            resolve(new DiscordError(result.dateTime, result.errorMessage));
-          });
+        db.connection.query('SELECT * FROM Errors ORDER BY ID DESC LIMIT 1', function (error, results, fields) {
+          const result = results[0];
+          if (result) {
+            discordError = new DiscordError(result.errorTime, result.errorMessage);
+          } else {
+            discordError = null;
+          }
         }).on("end", () => {
           db.connection.end();
+          resolve(discordError);
         });
       });
   }
@@ -40,13 +45,12 @@ export abstract class ErrorManager {
         let db = new DataBase();
         db.connection.connect();
 
-        db.connection.query('INSERT INTO DiscordServers SET ?', error, function (error, results, fields) {
-          results.forEach(result => {
-            if (error) reject(error);
-          }).on("end", () => {
-            db.connection.end();
-            resolve();
-          });
+        db.connection.query('INSERT INTO Errors SET ?', error, function (error, results, fields) {
+
+          if (error) reject(error);
+        }).on("end", () => {
+          db.connection.end();
+          resolve();
         });
       });
   }

@@ -52,7 +52,7 @@ export abstract class MessageHandling {
   public static async LogError(caller: string, error: Error, guild?: Guild | VolfbotServer) {
     let lastError = await ErrorManager.getLastError();
     let currentDate = new Date();
-    if (lastError.dateTime.getTime() - currentDate.getTime() < 30000) {
+    if (lastError == null || currentDate.getTime() - lastError.errorTime.getTime() > 30000) {
       const embed = new EmbedBuilder();
       embed.setTitle("Error!");
       embed.setDescription(`${error.message}\r\n\`\`\`${error.stack}\`\`\`\r\n**The developer has been notified**`);
@@ -117,7 +117,7 @@ export abstract class MessageHandling {
       const nowPlaying: PlayableResource = await server.queue.CurrentItem();
       const currentVC = await server.GetCurrentVC();
       if (!currentVC) return;
-      let embed: EmbedBuilder;
+      let embed: EmbedBuilder = new EmbedBuilder().setTitle("Now Playing").setDescription("Nothing.");
       let nowPlayingTitle = `Now Playing`;
       let nowPlayingDescription = `Playing in ${channelMention(currentVC.id)}\r\n\r\n`;
 
