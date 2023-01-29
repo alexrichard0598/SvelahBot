@@ -330,7 +330,6 @@ export class MediaQueue {
     this.looping = false;
   }
 
-  //TODO: Fix this
   public async Shuffle() {
     try {
       let copyQueue = await this.GetQueue();
