@@ -7,6 +7,7 @@ import {
   ApplicationCommandOptionType,
   userMention,
   channelMention,
+  Snowflake,
 } from "discord.js";
 import {
   AudioPlayerStatus,
@@ -402,8 +403,7 @@ export abstract class Voice {
   public async Shuffle(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true, isQueueMessage: true });
-      interaction.editReply({content: "Sorry, this command is currently broken"});
-      return;
+      
       if (await server.queue.GetTotalLength() == 0) {
         interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Queue is empty")] });
       } else {
@@ -478,7 +478,7 @@ export abstract class Voice {
     return connection;
   }
 
-  private CheckMediaStatus(media: PlayableResource, isPlaylist: boolean, username: string): [boolean, EmbedBuilder] {
+  private CheckMediaStatus(media: PlayableResource, isPlaylist: boolean): [boolean, EmbedBuilder] {
     let embed = new EmbedBuilder();
     let mediaError = false;
 
@@ -492,7 +492,8 @@ export abstract class Voice {
       mediaError = true;
     } else if (isPlaylist) {
       embed.setTitle("Playlist Queued");
-      embed.setDescription(`[${media.meta.playlist.name}](https://www.youtube.com/playlist?list=${media.url}) [${username}]`);
+      //TODO: Fix media.url for playlist
+      embed.setDescription(`${media.meta.playlist.name} [${userMention(media.meta.queuedBy)}]`);
     } else {
       const meta = media.meta as IMetadata;
       embed.setTitle('Song Queued');
@@ -531,7 +532,7 @@ export abstract class Voice {
 
     videoToTest = vid;
 
-    let mediaStatus = this.CheckMediaStatus(videoToTest, mediaType[0] == MediaType.yt_playlist, interaction.user.id);
+    let mediaStatus = this.CheckMediaStatus(videoToTest, mediaType[0] == MediaType.yt_playlist);
 
     if (mediaStatus[0]) {
       server.UpdateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1]] }));

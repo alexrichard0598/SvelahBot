@@ -99,16 +99,20 @@ export abstract class MessageHandling {
   }
 
   public static async InitCommand({ interaction, isStatusMessage: isStatusMessage, isQueueMessage: isQueueMessage, isNowPlayingMessage: isNowPlayingMessage }: InitCommandParams): Promise<VolfbotServer> {
-    if (!interaction.deferred) {
-      const reply = await interaction.deferReply({ fetchReply: true });
-      const server = await VolfbotServer.GetServerFromGuild(interaction.guild);
-      if (isStatusMessage) await server.UpdateStatusMessage(reply);
-      if (isQueueMessage) await server.UpdateQueueMessage(reply);
-      if (isNowPlayingMessage) await server.UpdateNowPlayingMessage(reply);
-      server.SetLastChannel(interaction.channel);
-      return server;
-    } else {
-      return VolfbotServer.GetServerFromGuild(interaction.guild);
+    try {
+      if (!interaction.deferred) {
+        const reply = await interaction.deferReply({ fetchReply: true });
+        const server = await VolfbotServer.GetServerFromGuild(interaction.guild);
+        if (isStatusMessage) await server.UpdateStatusMessage(reply);
+        if (isQueueMessage) await server.UpdateQueueMessage(reply);
+        if (isNowPlayingMessage) await server.UpdateNowPlayingMessage(reply);
+        server.SetLastChannel(interaction.channel);
+        return server;
+      } else {
+        return VolfbotServer.GetServerFromGuild(interaction.guild);
+      }
+    } catch (error) {
+      MessageHandling.LogError("InitCommand", error, interaction.guild);
     }
   }
 
@@ -149,7 +153,7 @@ export abstract class MessageHandling {
         embed = new EmbedBuilder().setTitle(nowPlayingTitle).setDescription(nowPlayingDescription + msg);
       }
 
-      
+
       return embed;
     } catch (error) {
       this.LogError("nowPlayingEmbed", error, server);

@@ -334,11 +334,11 @@ export class MediaQueue {
   public async Shuffle() {
     try {
       let copyQueue = await this.GetQueue();
-      let shuffledQueue = await this.GetQueue();
+      let shuffledQueue = new Array<PlayableResource>();
       while (copyQueue.length > 0) {
         const j = Math.floor(Math.random() * (copyQueue.length))
         shuffledQueue.push(copyQueue[j]);
-        copyQueue = copyQueue.slice(0, j).concat(copyQueue.slice(j + 1));
+        copyQueue = copyQueue.filter(item => item !== copyQueue[j]);
       }
       this.SetQueue(shuffledQueue);
     } catch (error) {
