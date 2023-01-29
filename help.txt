@@ -22,7 +22,7 @@ Currently the bot can only respond to these commands:
   **/clear:** removes all items from queue, does not stop current song
   **/loop:** loops the queue, until /end-looping is called
   **/end-looping:** aka **/eloop**, stops the queue looping
-  ~~**/shuffle:** shuffles the current queue including the current song~~ (command is current broken)
+  **/shuffle:** shuffles the current queue including the current song
   
 
   __MISC OPTIONS__
