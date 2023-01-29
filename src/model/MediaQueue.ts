@@ -7,7 +7,7 @@ import * as youtubeDL from "youtube-dl-exec"
 const youtubeDownloader = youtubeDL.create("/bin/ytdlp");
 import { YouTubeSearchOptions, YouTubeSearchPageResults, YouTubeSearchResults } from "youtube-search";
 import { AudioResource, demuxProbe, createAudioResource } from "@discordjs/voice";
-import { EmbedBuilder } from "discord.js";
+import { EmbedBuilder, Snowflake } from "discord.js";
 import { MediaType } from "./MediaType";
 import { IMetadata, Metadata } from "./Metadata";
 import moment = require("moment");
@@ -96,7 +96,7 @@ export class MediaQueue {
 
   public static async CreateYoutubePlaylistResource(
     playlistId: string,
-    enqueuedBy: string,
+    enqueuedBy: Snowflake,
     server: VolfbotServer
   ): Promise<Array<PlayableResource>> {
     try {

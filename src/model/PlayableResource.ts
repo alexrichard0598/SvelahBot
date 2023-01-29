@@ -5,6 +5,7 @@ import { VolfbotServer } from "./VolfbotServer";
 import { ISong, Song } from "../database/Queue";
 import { MediaQueue } from "./MediaQueue";
 import { MessageHandling } from "../functions/MessageHandling";
+import { Snowflake } from "discord.js";
 
 export class PlayableResource {
     id: string;
@@ -13,7 +14,7 @@ export class PlayableResource {
     private resource: AudioResource;
     discordServerId: string;
 
-    constructor(server: VolfbotServer | string, url = "", meta: Metadata = new Metadata()) {
+    constructor(server: VolfbotServer | Snowflake, url = "", meta: Metadata = new Metadata()) {
         this.url = url;
         this.meta = meta;
         this.discordServerId = server instanceof VolfbotServer ? server.id : server;

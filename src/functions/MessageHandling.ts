@@ -76,7 +76,7 @@ export abstract class MessageHandling {
     }
   }
 
-  public static MessageExist(message: Message | Snowflake, channel?: GuildTextBasedChannel): Promise<boolean> {
+  public static async MessageExist(message: Message | Snowflake, channel?: GuildTextBasedChannel): Promise<boolean> {
     return new Promise(async (resolve, reject) => {
       try {
         if (message instanceof Message) {
@@ -121,12 +121,7 @@ export abstract class MessageHandling {
       let nowPlayingTitle = `Now Playing`;
       let nowPlayingDescription = `Playing in ${channelMention(currentVC.id)}\r\n\r\n`;
 
-      if (server.audioPlayer.state.status !== AudioPlayerStatus.Playing) {
-        embed = new EmbedBuilder().setTitle(nowPlayingTitle).setDescription("Nothing.");
-      }
-      else if (nowPlaying == undefined) {
-        embed = new EmbedBuilder().setTitle(nowPlayingTitle).setDescription("Nothing.");
-      } else {
+      if (server.audioPlayer.state.status === AudioPlayerStatus.Playing && nowPlaying !== undefined) {
         const metadata: Metadata = nowPlaying.meta;
         const length = metadata.length;
         let lengthString = this.GetTimestamp(length);
@@ -153,6 +148,8 @@ export abstract class MessageHandling {
         msg += ` [${playbackString}/${lengthString}]`;
         embed = new EmbedBuilder().setTitle(nowPlayingTitle).setDescription(nowPlayingDescription + msg);
       }
+
+      
       return embed;
     } catch (error) {
       this.LogError("nowPlayingEmbed", error, server);

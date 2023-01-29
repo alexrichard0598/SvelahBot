@@ -1,16 +1,17 @@
+import { Snowflake } from "discord.js";
 import { YouTubePlaylist } from "./PlayableResource";
 
 export interface IMetadata {
   title: string;
   length: number;
-  queuedBy: string;
+  queuedBy: Snowflake;
   playlist: YouTubePlaylist | null;
 }
 
 export class Metadata implements IMetadata {
   title: string;
   length: number;
-  queuedBy: string;
+  queuedBy: Snowflake;
   playlist: YouTubePlaylist | null;
 
   constructor() {

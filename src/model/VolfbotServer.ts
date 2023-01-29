@@ -17,7 +17,7 @@ export class VolfbotServer {
   lastChannel: GuildTextBasedChannel;
   lastVC: VoiceBasedChannel;
   messages: ServerMessages;
-  id: string;
+  id: Snowflake;
   private static servers: VolfbotServer[] = new Array<VolfbotServer>();
   private playingSystemSound = false;
   private disconnectTimer: NodeJS.Timeout;
@@ -314,7 +314,7 @@ export class VolfbotServer {
         this.AutoDisconnect();
       }
 
-      if (typeof (embed.data.description) === "string") {
+      if (typeof(embed.data.description) === "string") {
         this.UpdateNowPlayingMessage(await this.lastChannel.send({ embeds: [embed] }));
       }
     } catch (error) {
