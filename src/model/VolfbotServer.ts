@@ -98,63 +98,51 @@ export class VolfbotServer {
   }
 
   public UpdateStatusMessage(newMsg: Message) {
-    try {
-      const oldMsg = this.messages.status;
+    const oldMsg = this.messages.status;
 
-      MessageHandling.MessageExist(oldMsg).then(exists => {
-        if (exists) {
-          oldMsg.fetch().then((msg => {
-            if (msg != null) {
-              if (msg.deletable) msg.delete();
-            }
-          }))
-        }
-      });
+    MessageHandling.MessageExist(oldMsg).then(exists => {
+      if (exists) {
+        oldMsg.fetch().then((msg => {
+          if (msg != null) {
+            if (msg.deletable) msg.delete();
+          }
+        }))
+      }
+    });
 
-      this.messages.status = newMsg;
-    } catch (error) {
-      MessageHandling.LogError("UpdateStatusMessage", error, this);
-    }
+    this.messages.status = newMsg;
   }
 
   public UpdateNowPlayingMessage(newMsg: Message) {
-    try {
-      const oldMsg = this.messages.nowPlaying;
+    const oldMsg = this.messages.nowPlaying;
 
-      MessageHandling.MessageExist(oldMsg).then(exists => {
-        if (exists) {
-          oldMsg.fetch().then((msg => {
-            if (msg != null) {
-              if (msg.deletable) msg.delete();
-            }
-          }))
-        }
-      });
+    MessageHandling.MessageExist(oldMsg).then(exists => {
+      if (exists) {
+        oldMsg.fetch().then((msg => {
+          if (msg != null) {
+            if (msg.deletable) msg.delete();
+          }
+        }))
+      }
+    })
 
-      this.messages.nowPlaying = newMsg;
-    } catch (error) {
-      log.warn(`Failed to delete now playing message on server with id of ${this.guild.id}`);
-    }
+    this.messages.nowPlaying = newMsg;
   }
 
   public UpdateQueueMessage(newMsg: Message) {
-    try {
-      const oldMsg = this.messages.queue;
+    const oldMsg = this.messages.queue;
 
-      MessageHandling.MessageExist(oldMsg).then(exists => {
-        if (exists) {
-          oldMsg.fetch().then((msg => {
-            if (msg != null) {
-              if (msg.deletable) msg.delete();
-            }
-          }))
-        }
-      });
+    MessageHandling.MessageExist(oldMsg).then(exists => {
+      if (exists) {
+        oldMsg.fetch().then((msg => {
+          if (msg != null) {
+            if (msg.deletable) msg.delete();
+          }
+        }))
+      }
+    });
 
-      this.messages.queue = newMsg;
-    } catch (error) {
-      log.warn(`Failed to delete queue message on server with id of ${this.guild.id}`);
-    }
+    this.messages.queue = newMsg;
   }
 
   public async DisconnectBot(excludedMessages: string[] = []) {

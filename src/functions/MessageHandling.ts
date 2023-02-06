@@ -103,9 +103,9 @@ export abstract class MessageHandling {
       if (!interaction.deferred) {
         const reply = await interaction.deferReply({ fetchReply: true });
         const server = await VolfbotServer.GetServerFromGuild(interaction.guild);
-        if (isStatusMessage) await server.UpdateStatusMessage(reply);
-        if (isQueueMessage) await server.UpdateQueueMessage(reply);
-        if (isNowPlayingMessage) await server.UpdateNowPlayingMessage(reply);
+        if (isStatusMessage) server.UpdateStatusMessage(reply);
+        if (isQueueMessage) server.UpdateQueueMessage(reply);
+        if (isNowPlayingMessage) server.UpdateNowPlayingMessage(reply);
         server.SetLastChannel(interaction.channel);
         return server;
       } else {
