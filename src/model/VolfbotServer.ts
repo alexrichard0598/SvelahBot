@@ -97,47 +97,61 @@ export class VolfbotServer {
     }
   }
 
-  public async UpdateStatusMessage(msg: Message) {
+  public UpdateStatusMessage(newMsg: Message) {
     try {
-      let messageExists = await MessageHandling.MessageExist(msg);
-      if (messageExists) {
-        const status: Message = await this.messages.status.fetch();
-        if (status != null) {
-          if (status.deletable) status.delete();
-        }
-      }
+      const oldMsg = this.messages.status;
 
-      this.messages.status = msg;
+      MessageHandling.MessageExist(oldMsg).then(exists => {
+        if (exists) {
+          oldMsg.fetch().then((msg => {
+            if (msg != null) {
+              if (msg.deletable) msg.delete();
+            }
+          }))
+        }
+      });
+
+      this.messages.status = newMsg;
     } catch (error) {
       MessageHandling.LogError("UpdateStatusMessage", error, this);
     }
   }
 
-  public async UpdateNowPlayingMessage(msg: Message) {
+  public UpdateNowPlayingMessage(newMsg: Message) {
     try {
-      let messageExists = await MessageHandling.MessageExist(msg);
-      if (messageExists) {
-        const nowPlaying: Message = await this.messages.nowPlaying.fetch();
-        if (nowPlaying != null) {
-          if (nowPlaying.deletable) nowPlaying.delete();
+      const oldMsg = this.messages.nowPlaying;
+
+      MessageHandling.MessageExist(oldMsg).then(exists => {
+        if (exists) {
+          oldMsg.fetch().then((msg => {
+            if (msg != null) {
+              if (msg.deletable) msg.delete();
+            }
+          }))
         }
-      }
-      this.messages.nowPlaying = msg;
+      });
+
+      this.messages.nowPlaying = newMsg;
     } catch (error) {
       log.warn(`Failed to delete now playing message on server with id of ${this.guild.id}`);
     }
   }
 
-  public async UpdateQueueMessage(msg: Message) {
+  public UpdateQueueMessage(newMsg: Message) {
     try {
-      let messageExists = await MessageHandling.MessageExist(msg);
-      if (messageExists) {
-        const queue: Message = await this.messages.queue.fetch();
-        if (queue != null) {
-          if (queue.deletable) queue.delete();
+      const oldMsg = this.messages.queue;
+
+      MessageHandling.MessageExist(oldMsg).then(exists => {
+        if (exists) {
+          oldMsg.fetch().then((msg => {
+            if (msg != null) {
+              if (msg.deletable) msg.delete();
+            }
+          }))
         }
-      }
-      this.messages.queue = msg;
+      });
+
+      this.messages.queue = newMsg;
     } catch (error) {
       log.warn(`Failed to delete queue message on server with id of ${this.guild.id}`);
     }
@@ -317,7 +331,7 @@ export class VolfbotServer {
         this.AutoDisconnect();
       }
 
-      if (typeof(embed.data.description) === "string") {
+      if (typeof (embed.data.description) === "string") {
         this.UpdateNowPlayingMessage(await this.lastChannel.send({ embeds: [embed] }));
       }
     } catch (error) {
