@@ -99,7 +99,8 @@ export class VolfbotServer {
 
   public async UpdateStatusMessage(msg: Message) {
     try {
-      if (this.messages.status != undefined && await MessageHandling.MessageExist(msg)) {
+      let messageExists = await MessageHandling.MessageExist(msg);
+      if (messageExists) {
         const status: Message = await this.messages.status.fetch();
         if (status != null) {
           if (status.deletable) status.delete();
@@ -114,7 +115,8 @@ export class VolfbotServer {
 
   public async UpdateNowPlayingMessage(msg: Message) {
     try {
-      if (this.messages.nowPlaying != undefined && await MessageHandling.MessageExist(msg)) {
+      let messageExists = await MessageHandling.MessageExist(msg);
+      if (messageExists) {
         const nowPlaying: Message = await this.messages.nowPlaying.fetch();
         if (nowPlaying != null) {
           if (nowPlaying.deletable) nowPlaying.delete();
@@ -128,7 +130,8 @@ export class VolfbotServer {
 
   public async UpdateQueueMessage(msg: Message) {
     try {
-      if (this.messages.queue != undefined && await MessageHandling.MessageExist(msg)) {
+      let messageExists = await MessageHandling.MessageExist(msg);
+      if (messageExists) {
         const queue: Message = await this.messages.queue.fetch();
         if (queue != null) {
           if (queue.deletable) queue.delete();
@@ -336,6 +339,7 @@ export class VolfbotServer {
     }
   }
 
+  //TODO: Fix this
   private async AutoDisconnect() {
     clearTimeout(this.disconnectTimer);
     this.disconnectTimer = setTimeout(() => {
@@ -360,7 +364,8 @@ export class VolfbotServer {
   private async UpdateNowPlayingStatus() {
     const embed = await MessageHandling.NowPlayingEmbed(this);
     try {
-      if (this.messages.nowPlaying && await MessageHandling.MessageExist(this.messages.nowPlaying)) {
+      let MessageExists = this.messages.nowPlaying instanceof Message ? await MessageHandling.MessageExist(this.messages.nowPlaying) : false;
+      if (MessageExists) {
         const nowPlayingMessage = await this.messages.nowPlaying.fetch();
         if (nowPlayingMessage.editable) {
           this.messages.nowPlaying = await nowPlayingMessage.edit({ embeds: [embed] });

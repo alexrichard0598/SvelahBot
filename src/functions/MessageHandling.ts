@@ -84,7 +84,7 @@ export abstract class MessageHandling {
         } else if (channel !== null && channel !== undefined && channel.isTextBased) {
           channel.messages.fetch(message);
         } else {
-          reject(new Error("Unable to check if message exists, provided message was not instance of Message, and no channel was provided"));
+          resolve(false);
         }
 
         resolve(true);
