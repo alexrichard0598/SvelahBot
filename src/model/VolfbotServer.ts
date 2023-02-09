@@ -69,7 +69,7 @@ export class VolfbotServer {
     }
   }
 
-  public async GetCurrentVC(): Promise<VoiceBasedChannel> {
+  public async GetCurrentVC(): Promise<VoiceBasedChannel | null> {
     try {
       const botId = getClient().user.id;
       const bot = await this.guild.members.fetch(botId);
@@ -343,14 +343,13 @@ export class VolfbotServer {
           this.PlaySong(currentItem);
         }
       } else {
-        if (!wasPlayingSystemSound) embed.setDescription("Reached end of queue, stopped playing");
+        if (!wasPlayingSystemSound) {
+          embed.setDescription("Reached end of queue, stopped playing");
+          this.UpdateNowPlayingMessage(await this.lastChannel.send({ embeds: [embed] }));
+        }
         clearInterval(this.nowPlayingClock);
         this.nowPlayingClock = null;
         this.AutoDisconnect();
-      }
-
-      if (typeof (embed.data.description) === "string") {
-        this.UpdateNowPlayingMessage(await this.lastChannel.send({ embeds: [embed] }));
       }
     } catch (error) {
       MessageHandling.LogError("PlayerIdle", error, this);
@@ -374,14 +373,19 @@ export class VolfbotServer {
   //TODO: Fix this
   private async AutoDisconnect() {
     clearTimeout(this.disconnectTimer);
-    this.disconnectTimer = setTimeout(() => {
-      if (getVoiceConnection(this.guild.id) != undefined && !this.queue.HasMedia() && this.audioPlayer.state.status == AudioPlayerStatus.Idle) {
+    this.disconnectTimer = setTimeout(async () => {
+      const currentVC = await this.GetCurrentVC();
+      if (
+        currentVC !== null
+        && !(await this.queue.HasMedia())
+        && this.audioPlayer.state.status == AudioPlayerStatus.Idle
+      ) {
         this.DisconnectBot();
         this.lastChannel.send({ embeds: [new EmbedBuilder().setDescription("Automatically disconnected due to 5 minutes of inactivity")] });
       } else {
         clearTimeout(this.disconnectTimer);
       }
-    }, 300000);
+    }, 5 * 60 * 1000);
   }
 
   private async SetNowPlayingClock() {
@@ -416,7 +420,7 @@ export class VolfbotServer {
 
   private async CreateNowPlayingMessage(embed: EmbedBuilder, nowPlayingMessage?: Message) {
     try {
-      if(embed === undefined) {
+      if (embed === undefined) {
         embed = new EmbedBuilder().setDescription("Not currently playing a song");
       }
 
