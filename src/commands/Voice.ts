@@ -73,6 +73,19 @@ export abstract class Voice {
   ): Promise<void> {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction });
+      const currentVC = await server.GetCurrentVC();
+      const guildMember = await interaction.guild.members.fetch(
+        interaction.user
+      );
+      const vc: VoiceBasedChannel = guildMember.voice.channel;
+
+      if(currentVC === null) {
+        server.ConnectBot(interaction);
+      } else if (currentVC !== vc) {
+        interaction.editReply({embeds: [new EmbedBuilder().setDescription("You're not currently connected to the same VC as me. Please move to the same vc or use the /join command")]});
+        return;
+      }
+
 
       const queue = server.queue; // get the server's queue
       const audioPlayer = server.audioPlayer; // get the server's audioPlayer

@@ -191,9 +191,12 @@ export class VolfbotServer {
       const embed = new EmbedBuilder;
       const vc: VoiceBasedChannel = guildMember.voice.channel;
       const audioPlayer = this.audioPlayer;
+      const currentBotVC = await this.GetCurrentVC();
 
       if (vc === null) {
         embed.setDescription("You are not part of a voice chat, please join a voice chat first.");
+      } else if (currentBotVC === vc) {
+        embed.setDescription("I'm already in the VC");
       } else {
         joinVoiceChannel({
           channelId: vc.id,
@@ -203,13 +206,14 @@ export class VolfbotServer {
         embed.setDescription(`Joined ${channelMention(vc.id)}`);
 
         this.SetLastVC(vc);
+
+        let stream = fs.createReadStream('./src/assets/sounds/volfbot-connect.ogg');
+        const sound = createAudioResource(stream);
+        this.playingSystemSound = true;
+        let playableResource = new PlayableResource(this);
+        this.PlaySong(await playableResource.SetResource(sound));
       }
 
-      let stream = fs.createReadStream('./src/assets/sounds/volfbot-connect.ogg');
-      const sound = createAudioResource(stream);
-      this.playingSystemSound = true;
-      let playableResource = new PlayableResource(this);
-      this.PlaySong(await playableResource.SetResource(sound));
       return embed;
     } catch (error) {
       MessageHandling.LogError("ConnectBot", error, this);
