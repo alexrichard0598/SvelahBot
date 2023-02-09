@@ -370,7 +370,6 @@ export class VolfbotServer {
     }
   }
 
-  //TODO: Fix this
   private async AutoDisconnect() {
     clearTimeout(this.disconnectTimer);
     this.disconnectTimer = setTimeout(async () => {
