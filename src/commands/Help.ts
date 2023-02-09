@@ -12,7 +12,7 @@ export abstract class Help {
       ? fs.readFileSync(helpFile, "utf-8")
       : "Could not find help message";
 
-    let embed = new EmbedBuilder();
+    let embed = new EmbedBuilder().setDescription("Unable to retrive help message");
 
     embed.setTitle("Help Text").setDescription(helpText);
 

@@ -25,27 +25,50 @@ export abstract class MessageHandling {
   }
 
   public static async ClearMessages(messages: Array<Message>, interaction?: CommandInteraction) {
-    const server = messages.length > 0 ? await VolfbotServer.GetServerFromGuild(messages[0].guild) : undefined;
+    const guild = messages.length > 0 ? messages[0].guild : interaction instanceof CommandInteraction ? interaction.guild : null;
+    const server = guild !== null ? await VolfbotServer.GetServerFromGuild(guild) : undefined;
+
     try {
       let embed: EmbedBuilder;
-      if (messages.length > 0) {
-        if (server.lastChannel instanceof TextChannel) {
-          server.lastChannel.bulkDelete(messages);
-          embed = new EmbedBuilder().setDescription("Messages deleted");
-        } else {
-          embed = new EmbedBuilder().setDescription("Cannot delete messages");
+      if (server !== undefined) {
+        if (
+          server.messages.nowPlaying instanceof Message
+          && messages.find(value => value.id === server.messages.nowPlaying.id) !== undefined
+        ) {
+          server.UpdateNowPlayingMessage(null);
         }
-      } else {
-        embed = new EmbedBuilder().setDescription("No messages to delete");
-      }
+        if (
+          server.messages.queue instanceof Message
+          && messages.find(value => value.id === server.messages.queue.id) !== undefined
+        ) {
+          server.UpdateQueueMessage(null);
+        }
+        if (
+          server.messages.status instanceof Message
+          && messages.find(value => value.id === server.messages.status.id) !== undefined
+        ) {
+          server.UpdateStatusMessage(null);
+        }
 
-      if (interaction) {
-        interaction.editReply({ embeds: [embed] });
-      } else if (server) {
-        server.lastChannel.send({ embeds: [embed] });
+        if (messages.length > 0) {
+          if (server.lastChannel instanceof TextChannel) {
+            server.lastChannel.bulkDelete(messages);
+            embed = new EmbedBuilder().setDescription("Messages deleted");
+          } else {
+            embed = new EmbedBuilder().setDescription("Cannot delete messages");
+          }
+        } else {
+          embed = new EmbedBuilder().setDescription("No messages to delete");
+        }
+
+        if (interaction) {
+          interaction.editReply({ embeds: [embed] });
+        } else if (server) {
+          server.lastChannel.send({ embeds: [embed] });
+        }
       }
     } catch (error) {
-      this.LogError("clearMessages", error, server)
+      this.LogError("ClearMessages", error, server)
     }
   }
 
@@ -53,19 +76,18 @@ export abstract class MessageHandling {
     let lastError = await ErrorManager.getLastError();
     let currentDate = new Date();
     if (lastError == null || currentDate.getTime() - lastError.errorTime.getTime() > 30000) {
-      const embed = new EmbedBuilder();
+      const embed = new EmbedBuilder().setDescription("Failed to log error");
       embed.setTitle("Error!");
       embed.setDescription(`${error.message}\r\n\`\`\`${error.stack}\`\`\`\r\n**The developer has been notified**`);
-      if (guild) {
-        let server: VolfbotServer;
-        if (guild instanceof VolfbotServer) {
-          server = guild;
-        } else {
-          server = await VolfbotServer.GetServerFromGuild(guild);
-        }
 
-        if (server.lastChannel !== undefined) server.lastChannel.send({ embeds: [embed] });
+      let server: VolfbotServer;
+      if (guild instanceof VolfbotServer) {
+        server = guild;
+      } else if (guild instanceof Guild) {
+        server = await VolfbotServer.GetServerFromGuild(guild);
       }
+
+      if (server instanceof VolfbotServer && server.lastChannel !== undefined) server.lastChannel.send({ embeds: [embed] });
 
       log.error(error);
       const botDevChannel = (await (await getClient().guilds.fetch('664999986974687242')).channels.fetch('888174462011342848')) as GuildTextBasedChannel;
@@ -80,9 +102,9 @@ export abstract class MessageHandling {
     return new Promise(async (resolve, reject) => {
       try {
         if (message instanceof Message) {
-          message.fetch();
-        } else if (channel !== null && channel !== undefined && channel.isTextBased) {
-          channel.messages.fetch(message);
+          await message.edit({});
+        } else if (channel !== undefined && channel !== null && "isTextBased" in channel && channel.isTextBased) {
+          await channel.messages.fetch({message: message, cache: false});
         } else {
           resolve(false);
         }
@@ -125,7 +147,7 @@ export abstract class MessageHandling {
       let nowPlayingTitle = `Now Playing`;
       let nowPlayingDescription = `Playing in ${channelMention(currentVC.id)}\r\n\r\n`;
 
-      if (server.audioPlayer.state.status === AudioPlayerStatus.Playing && nowPlaying !== undefined) {
+      if (server.audioPlayer.state.status === AudioPlayerStatus.Playing && nowPlaying !== undefined && nowPlaying !== null) {
         const metadata: Metadata = nowPlaying.meta;
         const length = metadata.length;
         let lengthString = this.GetTimestamp(length);

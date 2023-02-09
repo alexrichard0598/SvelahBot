@@ -25,7 +25,7 @@ export abstract class Text {
       const knownUser = knownUsers.find(u => u.userId == interaction.user.id);
 
       if (knownUser != undefined) {
-        let msg = new EmbedBuilder();
+        let msg = new EmbedBuilder().setDescription("Failed to recognize user");
         let info = Object.create({ name: "🤖User Recognized🤖", value: `${knownUser.message}` });
 
         msg.addFields(info);

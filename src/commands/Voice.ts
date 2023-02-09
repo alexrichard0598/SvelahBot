@@ -80,7 +80,7 @@ export abstract class Voice {
       const vc: VoiceBasedChannel = guildMember.voice.channel;
 
       if(currentVC === null) {
-        server.ConnectBot(interaction);
+        await server.ConnectBot(interaction);
       } else if (currentVC !== vc) {
         interaction.editReply({embeds: [new EmbedBuilder().setDescription("You're not currently connected to the same VC as me. Please move to the same vc or use the /join command")]});
         return;
@@ -212,7 +212,7 @@ export abstract class Voice {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true });
 
-      const embed = new EmbedBuilder();
+      const embed = new EmbedBuilder().setDescription("Failed to resume playback");
       const audioPlayer = server.audioPlayer;
       const hasQueue = await server.queue.HasMedia();
       server.SetLastChannel(interaction.channel);
@@ -247,7 +247,7 @@ export abstract class Voice {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true });
 
-      const embed = new EmbedBuilder();
+      const embed = new EmbedBuilder().setDescription("Failed to pause music");
       const audioPlayer = server.audioPlayer;
       server.SetLastChannel(interaction.channel);
       if (audioPlayer.state.status === AudioPlayerStatus.Playing) {
@@ -276,7 +276,7 @@ export abstract class Voice {
       const audioPlayer = server.audioPlayer;
       server.SetLastChannel(interaction.channel);
 
-      const embed = new EmbedBuilder();
+      const embed = new EmbedBuilder().setDescription("Failed to fetch queue");
       let title =
         audioPlayer.state.status == AudioPlayerStatus.Playing
           ? "Now Playing"
@@ -341,7 +341,7 @@ export abstract class Voice {
 
       const queue = server.queue;
       let i = parseInt(skip);
-      const embed = new EmbedBuilder();
+      const embed = new EmbedBuilder().setDescription("Failed to skip song");
       const audioPlayer = server.audioPlayer;
 
       if (!queue.HasMedia()) {
@@ -492,7 +492,7 @@ export abstract class Voice {
   }
 
   private CheckMediaStatus(media: PlayableResource, isPlaylist: boolean): [boolean, EmbedBuilder] {
-    let embed = new EmbedBuilder();
+    let embed = new EmbedBuilder().setDescription("Failed to check media status");
     let mediaError = false;
 
     if (media == undefined) {

@@ -1,7 +1,7 @@
 import { Message } from "discord.js";
 
 export class ServerMessages {
-    status: Message;
-    queue: Message;
-    nowPlaying: Message;
+    status: Message | null;
+    queue: Message | null;
+    nowPlaying: Message | null;
 }

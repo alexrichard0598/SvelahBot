@@ -59,7 +59,7 @@ export class MediaQueue {
       meta.title = details.title;
       meta.length = details.duration * 1000;
       meta.queuedBy = queuedBy;
-      meta.playlist = playlist ? playlist : null;
+      meta.playlist = playlist ?? null;
 
       return meta;
     } catch (error) {

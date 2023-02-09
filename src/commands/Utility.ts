@@ -79,7 +79,7 @@ export abstract class Utility {
       const client = getClient();
       const uptime = client.uptime;
       const readyAt = client.readyAt;
-      const embed = new EmbedBuilder();
+      const embed = new EmbedBuilder().setDescription("Unable to retrieve bot uptime");
       let uptimeString = MessageHandling.GetTimestamp(uptime, TimeUnit.hour);
       if(uptimeString.length <= 7) uptimeString = '0' + uptimeString;
       embed.setDescription(`I have currently been online for ${uptimeString} [hh:mm:ss]`);
