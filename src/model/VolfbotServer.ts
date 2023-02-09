@@ -168,6 +168,10 @@ export class VolfbotServer {
           }
         });
 
+        this.UpdateStatusMessage(null);
+        this.UpdateNowPlayingMessage(null);
+        this.UpdateQueueMessage(null);
+
         const deleting = await this.lastChannel.send("Cleaning up after disconnect");
         this.playingSystemSound = true;
         let playableResource = new PlayableResource(this);
