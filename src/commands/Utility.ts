@@ -34,8 +34,14 @@ export abstract class Utility {
   public async Status(interaction: CommandInteraction) {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true });
-      const status = server.GetStatus();
-      const vc: VoiceBasedChannel = await server.GetCurrentVC();
+      let status: BotStatus;
+      let vc: VoiceBasedChannel;
+
+      if (server != undefined) {
+        status = server.GetStatus();
+        vc = await server.GetCurrentVC();
+      }
+
       let msg = "";
 
       switch (status) {
@@ -60,9 +66,9 @@ export abstract class Utility {
   }
 
   @Slash({ name: "clear-messages", description: "Clears all messages from a bot in the text channel" })
-  public async Clear(interaction: CommandInteraction): Promise<void> {
+  public async ClearMessages(interaction: CommandInteraction): Promise<void> {
     try {
-      await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true });
+      await MessageHandling.InitCommand({ interaction: interaction});
       const deleting = await interaction.fetchReply();
       const messages = await MessageHandling.RetrieveBotMessages(interaction.channel, [deleting.id]);
 
@@ -81,7 +87,7 @@ export abstract class Utility {
       const readyAt = client.readyAt;
       const embed = new EmbedBuilder().setDescription("Unable to retrieve bot uptime");
       let uptimeString = MessageHandling.GetTimestamp(uptime, TimeUnit.hour);
-      if(uptimeString.length <= 7) uptimeString = '0' + uptimeString;
+      if (uptimeString.length <= 7) uptimeString = '0' + uptimeString;
       embed.setDescription(`I have currently been online for ${uptimeString} [hh:mm:ss]`);
       embed.setDescription(embed.data.description + "\r\n" + 'I went online on ' + `${readyAt.getUTCFullYear()}-${('0' + (readyAt.getUTCMonth() + 1)).slice(-2)}-${('0' + readyAt.getUTCDay()).slice(-2)}`
         + ` at ${('0' + readyAt.getUTCHours()).slice(-2)}:${('0' + readyAt.getUTCMinutes()).slice(-2)}:${('0' + readyAt.getUTCSeconds()).slice(-2)} UTC`);

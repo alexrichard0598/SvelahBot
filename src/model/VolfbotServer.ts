@@ -102,7 +102,7 @@ export class VolfbotServer {
 
   public UpdateStatusMessage(newMsg: Message) {
     try {
-      if (newMsg !== null) {
+      if (newMsg instanceof Message) {
         const oldMsg = this.messages.status;
 
         MessageHandling.MessageExists(oldMsg).then(exists => {
@@ -124,7 +124,7 @@ export class VolfbotServer {
 
   public UpdateNowPlayingMessage(newMsg: Message) {
     try {
-      if (newMsg !== null) {
+      if (newMsg instanceof Message) {
         const oldMsg = this.messages.nowPlaying;
 
         MessageHandling.MessageExists(oldMsg).then(exists => {
@@ -146,7 +146,7 @@ export class VolfbotServer {
 
   public UpdateQueueMessage(newMsg: Message) {
     try {
-      if (newMsg !== null) {
+      if (newMsg instanceof Message) {
         const oldMsg = this.messages.queue;
 
         MessageHandling.MessageExists(oldMsg).then(exists => {

@@ -102,12 +102,12 @@ export abstract class MessageHandling {
     return new Promise(async (resolve, reject) => {
       try {
         if (message instanceof Message) {
-          let embeds = message.embeds;
-          let editedMessage = await message.edit({embeds: embeds});
+          let embeds = message.content;
+          let editedMessage = await message.edit({content: embeds});
         } else if (channel !== undefined && channel !== null && "isTextBased" in channel && channel.isTextBased) {
           let fetchedMessage = await channel.messages.fetch({message: message, cache: false});
-          let embeds = fetchedMessage.embeds;
-          let editedMessage = await fetchedMessage.edit({embeds: embeds});
+          let embeds = fetchedMessage.content;
+          let editedMessage = await fetchedMessage.edit({content: embeds});
         } else {
           resolve(false);
         }
