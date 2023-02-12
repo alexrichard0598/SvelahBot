@@ -105,7 +105,7 @@ export class VolfbotServer {
       if (newMsg !== null) {
         const oldMsg = this.messages.status;
 
-        MessageHandling.MessageExist(oldMsg).then(exists => {
+        MessageHandling.MessageExists(oldMsg).then(exists => {
           if (exists) {
             oldMsg.fetch().then((msg => {
               if (msg != null) {
@@ -127,7 +127,7 @@ export class VolfbotServer {
       if (newMsg !== null) {
         const oldMsg = this.messages.nowPlaying;
 
-        MessageHandling.MessageExist(oldMsg).then(exists => {
+        MessageHandling.MessageExists(oldMsg).then(exists => {
           if (exists) {
             oldMsg.fetch().then((msg => {
               if (msg != null) {
@@ -149,7 +149,7 @@ export class VolfbotServer {
       if (newMsg !== null) {
         const oldMsg = this.messages.queue;
 
-        MessageHandling.MessageExist(oldMsg).then(exists => {
+        MessageHandling.MessageExists(oldMsg).then(exists => {
           if (exists) {
             oldMsg.fetch().then((msg => {
               if (msg != null) {
@@ -401,7 +401,7 @@ export class VolfbotServer {
   private async UpdateNowPlayingStatus() {
     const embed = await MessageHandling.NowPlayingEmbed(this);
     try {
-      let MessageExists = await MessageHandling.MessageExist(this.messages.nowPlaying);
+      let MessageExists = await MessageHandling.MessageExists(this.messages.nowPlaying);
       if (MessageExists) {
         const nowPlayingMessage = await this.messages.nowPlaying.fetch();
         if (nowPlayingMessage.editable) {

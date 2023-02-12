@@ -98,13 +98,16 @@ export abstract class MessageHandling {
     }
   }
 
-  public static async MessageExist(message: Message | Snowflake, channel?: GuildTextBasedChannel): Promise<boolean> {
+  public static async MessageExists(message: Message | Snowflake, channel?: GuildTextBasedChannel): Promise<boolean> {
     return new Promise(async (resolve, reject) => {
       try {
         if (message instanceof Message) {
-          await message.edit({});
+          let embeds = message.embeds;
+          let editedMessage = await message.edit({embeds: embeds});
         } else if (channel !== undefined && channel !== null && "isTextBased" in channel && channel.isTextBased) {
-          await channel.messages.fetch({message: message, cache: false});
+          let fetchedMessage = await channel.messages.fetch({message: message, cache: false});
+          let embeds = fetchedMessage.embeds;
+          let editedMessage = await fetchedMessage.edit({embeds: embeds});
         } else {
           resolve(false);
         }
