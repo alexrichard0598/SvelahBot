@@ -223,6 +223,14 @@ export class VolfbotServer {
           guildId: vc.guildId,
           adapterCreator: vc.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
         }).subscribe(audioPlayer);
+
+        let connection = voiceConnection.connection;
+
+        connection.on("stateChange", (oldState, newState) => {
+          if (oldState.status === VoiceConnectionStatus.Ready && newState.status === VoiceConnectionStatus.Connecting) {
+            connection.configureNetworking();
+          }
+        });
         embed.setDescription(`Joined ${channelMention(vc.id)}`);
 
         this.SetLastVC(vc);
@@ -318,6 +326,14 @@ export class VolfbotServer {
           guildId: this.lastVC.guildId,
           adapterCreator: this.lastVC.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
         }).subscribe(this.audioPlayer);
+
+          let connection = voiceConnection.connection;
+
+          connection.on("stateChange", (oldState, newState) => {
+            if (oldState.status === VoiceConnectionStatus.Ready && newState.status === VoiceConnectionStatus.Connecting) {
+              connection.configureNetworking();
+            }
+          })
 
         this.queue.ResumePlayback();
       } else {
