@@ -1,5 +1,5 @@
 import { getVoiceConnection } from "@discordjs/voice";
-import { CommandInteraction, VoiceBasedChannel, EmbedBuilder } from "discord.js";
+import { CommandInteraction, VoiceBasedChannel, EmbedBuilder, channelMention } from "discord.js";
 import { Discord, Slash } from "discordx";
 import { MessageHandling, TimeUnit } from "../functions/MessageHandling";
 import { BotStatus } from "../model/BotStatus";
@@ -49,10 +49,10 @@ export abstract class Utility {
           msg = "I'm ready and waiting for your commands";
           break;
         case BotStatus.InVC:
-          msg = `I'm sitting in the *${vc.id}* voice chat, and waiting for your commands`
+          msg = `I'm sitting in the *${channelMention(vc.id)}* voice chat, and waiting for your commands`
           break;
         case BotStatus.PlayingMusic:
-          msg = `I'm currently playing [${(await server.queue.CurrentItem()).meta.title}](${(await server.queue.CurrentItem()).url}) in "${vc.id}"`
+          msg = `I'm currently playing [${(await server.queue.CurrentItem()).meta.title}](${(await server.queue.CurrentItem()).url}) in "${channelMention(vc.id)}"`
           break;
         default:
           msg = "I'm not sure what I'm up to";

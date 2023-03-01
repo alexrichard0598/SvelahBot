@@ -27,7 +27,7 @@ export class MediaQueue {
       key: process.env.GOOGLE_API,
     };
 
-    server.UpdateStatusMessage(await server.lastChannel.send({ embeds: [new EmbedBuilder().setDescription(`Searching youtube for "${search}"`)] }));
+    await server.UpdateStatusMessage(await server.lastChannel.send({ embeds: [new EmbedBuilder().setDescription(`Searching youtube for "${search}"`)] }));
 
     return new Promise<string>((resolve, reject) => {
       youtubeSearch(search, opts).then((res: { results: YouTubeSearchResults[], pageInfo: YouTubeSearchPageResults }) => {

@@ -2,7 +2,7 @@ import { importx } from "@discordx/importer";
 import { Client } from "discordx";
 import { config as configDotenv } from "dotenv";
 import { resolve } from "path/posix";
-import { log } from "./logging";
+import { logger } from "./logging";
 import { ActivityType, Events, GatewayIntentBits, Guild, Interaction, Partials } from "discord.js";
 import { VolfbotServer } from "./model/VolfbotServer";
 
@@ -43,9 +43,9 @@ async function Start() {
     });
 
     if (process.env.DEV == "true") {
-      log.info("Developer Mode");
+      logger.debug("Developer Mode");
     } else {
-      log.info("Live");
+      logger.debug("Live");
     }
 
     client.once("ready", async () => {
@@ -56,7 +56,7 @@ async function Start() {
       try {
         client.executeInteraction(interaction);
       } catch (error) {
-        log.error(error);
+        logger.error(error);
       }
     });
 
@@ -65,11 +65,11 @@ async function Start() {
     });
 
     await client.login(process.env.TOKEN).then(() => {
-      log.info("Volfbot Online");
+      logger.debug("Volfbot Online");
       client.guilds.cache.forEach((guild: Guild) => VolfbotServer.GetServerFromGuild(guild));
     });
   } catch (error) {
-    log.error(error);
+    logger.error(error);
   }
 }
 

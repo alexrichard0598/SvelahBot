@@ -4,10 +4,13 @@ import { Metadata } from "../model/Metadata";
 import { PlayableResource } from "../model/PlayableResource";
 import { VolfbotServer } from "../model/VolfbotServer";
 import { getClient } from "../app";
-import { log } from "../logging";
+import { logger } from "../logging";
 import { DiscordError, ErrorManager } from "../database/Errors";
 
 export abstract class MessageHandling {
+  public static errorTracker: number = 0;
+  public static errorClock: NodeJS.Timer;
+
   public static async RetrieveBotMessages(channel: GuildTextBasedChannel, exclude: string[] = []): Promise<Array<Message>> {
     try {
       let messages = new Array<Message>();
@@ -35,19 +38,19 @@ export abstract class MessageHandling {
           server.messages.nowPlaying instanceof Message
           && messages.find(value => value.id === server.messages.nowPlaying.id) !== undefined
         ) {
-          server.UpdateNowPlayingMessage(null);
+          await server.UpdateNowPlayingMessage(null);
         }
         if (
           server.messages.queue instanceof Message
           && messages.find(value => value.id === server.messages.queue.id) !== undefined
         ) {
-          server.UpdateQueueMessage(null);
+          await server.UpdateQueueMessage(null);
         }
         if (
           server.messages.status instanceof Message
           && messages.find(value => value.id === server.messages.status.id) !== undefined
         ) {
-          server.UpdateStatusMessage(null);
+          await server.UpdateStatusMessage(null);
         }
 
         if (messages.length > 0) {
@@ -73,6 +76,28 @@ export abstract class MessageHandling {
   }
 
   public static async LogError(caller: string, error: Error, guild?: Guild | VolfbotServer) {
+    this.errorTracker++;
+
+    if (this.errorClock == undefined) {
+      this.errorClock = setInterval(() => {
+        if (this.errorTracker > 50) {
+          logger.error("Throwing error due to excessive errors");
+          logger.error(error);
+          this.errorTracker = 0;
+          throw error;
+        } else {
+          this.errorTracker = 0;
+        }
+      }, 5 * 60 * 1000)
+    }
+
+    if (this.errorTracker > 50) {
+      logger.error("Throwing error due to excessive errors");
+      logger.error(error);
+      this.errorTracker = 0;
+      throw error;
+    }
+
     let lastError = await ErrorManager.getLastError();
     let currentDate = new Date();
     if (lastError == null || currentDate.getTime() - lastError.errorTime.getTime() > 30000) {
@@ -89,32 +114,47 @@ export abstract class MessageHandling {
 
       if (server instanceof VolfbotServer && server.lastChannel !== undefined) server.lastChannel.send({ embeds: [embed] });
 
-      log.error(error);
       const botDevChannel = (await (await getClient().guilds.fetch('664999986974687242')).channels.fetch('888174462011342848')) as GuildTextBasedChannel;
-      botDevChannel.send({ embeds: [embed], content: userMention('134131441175887872') + " An error has occurred in " + caller });
+      let errorMsg = userMention('134131441175887872') + " An error has occurred in " + caller;
+      if(server instanceof VolfbotServer) errorMsg += "\nOn the discord server: " + server.guild.name;
+      botDevChannel.send({ embeds: [embed], content: errorMsg });
 
       let newError = new DiscordError(currentDate, error.message + ' ' + error.stack);
       ErrorManager.addError(newError);
     }
+
+    logger.error(error);
   }
 
   public static async MessageExists(message: Message | Snowflake, channel?: GuildTextBasedChannel): Promise<boolean> {
     return new Promise(async (resolve, reject) => {
       try {
+        let fetchedMessage: Message;
         if (message instanceof Message) {
-          let embeds = message.content;
-          let editedMessage = await message.edit({content: embeds});
+          fetchedMessage = await message.fetch();
         } else if (channel !== undefined && channel !== null && "isTextBased" in channel && channel.isTextBased) {
-          let fetchedMessage = await channel.messages.fetch({message: message, cache: false});
-          let embeds = fetchedMessage.content;
-          let editedMessage = await fetchedMessage.edit({content: embeds});
+          fetchedMessage = await channel.messages.fetch({ message: message, cache: false });
         } else {
           resolve(false);
         }
 
-        resolve(true);
+        let msgContent = fetchedMessage.content;
+        let editedMessage;
+
+        if (msgContent.includes("\u00AD")) {
+          editedMessage = await fetchedMessage.edit({ content: msgContent.replace("\u00AD", "") });
+        } else {
+          editedMessage = await fetchedMessage.edit({ content: msgContent + "\u00AD" });
+        }
+
+        if (editedMessage instanceof Message) {
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+
       } catch (error) {
-        if (error.code != 10008) {
+        if (error.code != 10008 && error.code != 50006) {
           reject(error);
         } else {
           resolve(false);
@@ -128,9 +168,9 @@ export abstract class MessageHandling {
       if (!interaction.deferred) {
         const reply = await interaction.deferReply({ fetchReply: true });
         const server = await VolfbotServer.GetServerFromGuild(interaction.guild);
-        if (isStatusMessage) server.UpdateStatusMessage(reply);
-        if (isQueueMessage) server.UpdateQueueMessage(reply);
-        if (isNowPlayingMessage) server.UpdateNowPlayingMessage(reply);
+        if (isStatusMessage) await server.UpdateStatusMessage(reply);
+        if (isQueueMessage) await server.UpdateQueueMessage(reply);
+        if (isNowPlayingMessage) await server.UpdateNowPlayingMessage(reply);
         server.SetLastChannel(interaction.channel);
         return server;
       } else {
@@ -138,50 +178,6 @@ export abstract class MessageHandling {
       }
     } catch (error) {
       MessageHandling.LogError("InitCommand", error, interaction.guild);
-    }
-  }
-
-  public static async NowPlayingEmbed(server: VolfbotServer): Promise<EmbedBuilder> {
-    try {
-      const nowPlaying: PlayableResource = await server.queue.CurrentItem();
-      const currentVC = await server.GetCurrentVC();
-      if (!currentVC) return;
-      let embed: EmbedBuilder = new EmbedBuilder().setTitle("Now Playing").setDescription("Nothing.");
-      let nowPlayingTitle = `Now Playing`;
-      let nowPlayingDescription = `Playing in ${channelMention(currentVC.id)}\r\n\r\n`;
-
-      if (server.audioPlayer.state.status === AudioPlayerStatus.Playing && nowPlaying !== undefined && nowPlaying !== null) {
-        const metadata: Metadata = nowPlaying.meta;
-        const length = metadata.length;
-        let lengthString = this.GetTimestamp(length);
-        let maxUnit: TimeUnit = TimeUnit.second;
-
-        if (lengthString.split(":").length > 2) {
-          maxUnit = TimeUnit.hour;
-        } else if (lengthString.split(":").length > 1) {
-          maxUnit = TimeUnit.minute;
-        }
-
-        let playbackDuration = server.audioPlayer.state.playbackDuration;
-        let playbackString = this.GetTimestamp(playbackDuration, maxUnit);
-
-        const percentPlayed: number = Math.ceil((playbackDuration / length) * 100);
-        let msg = `[${metadata.title}](${nowPlaying.url}) [${userMention(metadata.queuedBy)}]\n\n`;
-        for (let i = 0; i < 33; i++) {
-          if (percentPlayed / 3 >= i) {
-            msg += '█';
-          } else {
-            msg += '░';
-          }
-        }
-        msg += ` [${playbackString}/${lengthString}]`;
-        embed = new EmbedBuilder().setTitle(nowPlayingTitle).setDescription(nowPlayingDescription + msg);
-      }
-
-
-      return embed;
-    } catch (error) {
-      this.LogError("nowPlayingEmbed", error, server);
     }
   }
 

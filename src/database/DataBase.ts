@@ -7,7 +7,8 @@ export class DataBase {
     host: 'localhost',
     user: 'volfbot',
     password: process.env.DATABASE_PASSWORD,
-    database: 'volfbot'
+    database: 'volfbot',
+    charset: 'utf8mb4',
   });
 
   constructor() {

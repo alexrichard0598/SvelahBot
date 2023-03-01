@@ -7,7 +7,6 @@ import {
   ApplicationCommandOptionType,
   userMention,
   channelMention,
-  Snowflake,
 } from "discord.js";
 import {
   AudioPlayerStatus,
@@ -20,7 +19,6 @@ import { PlayableResource } from "../model/PlayableResource";
 import moment = require("moment");
 import momentDurationFormatSetup = require("moment-duration-format");
 momentDurationFormatSetup(moment);
-import { BotStatus } from "../model/BotStatus";
 import { VolfbotServer } from "../model/VolfbotServer";
 import { MessageHandling } from "../functions/MessageHandling";
 import { MediaQueue } from "../model/MediaQueue";
@@ -403,7 +401,7 @@ export abstract class Voice {
       if (!server.queue.HasMedia() || nowPlaying == null) {
         interaction.editReply({ embeds: [new EmbedBuilder().setDescription("No songs are currently queued")] })
       } else if (nowPlaying.meta instanceof Metadata) {
-        interaction.editReply({ embeds: [await MessageHandling.NowPlayingEmbed(server)] });
+        interaction.editReply({ embeds: [await server.nowPlayingDisplay.CreateNowPlayingEmbed()] });
       } else {
         interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Could not get currently playing song")] });
       }
@@ -484,7 +482,7 @@ export abstract class Voice {
 
     /* if the voice connection is undefined create a voice connection */
     if (connection === undefined) {
-      server.UpdateStatusMessage(await server.lastChannel.send({ embeds: [await server.ConnectBot(interaction)] }));
+      await server.UpdateStatusMessage(await server.lastChannel.send({ embeds: [await server.ConnectBot(interaction)] }));
       connection = getVoiceConnection(guildId);
     }
 
@@ -548,7 +546,7 @@ export abstract class Voice {
     let mediaStatus = this.CheckMediaStatus(videoToTest, mediaType[0] == MediaType.yt_playlist);
 
     if (mediaStatus[0]) {
-      server.UpdateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1]] }));
+      await server.UpdateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1]] }));
       return;
     } else {
 
@@ -558,7 +556,7 @@ export abstract class Voice {
         extraLength = media.length;
       }
 
-      server.UpdateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1].setTitle(mediaStatus[1].data.title + ` — ${(await server.queue.GetQueueCount()) + extraLength} Songs in Queue`)] }));
+      await server.UpdateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1].setTitle(mediaStatus[1].data.title + ` — ${(await server.queue.GetQueueCount()) + extraLength} Songs in Queue`)] }));
     }
 
     return media;
