@@ -1,6 +1,6 @@
 {
   "name": "volfbot",
-  "version": "1.7.5",
+  "version": "1.8.0",
   "description": "A bot for use by Svelah and friends",
   "main": "/src/app.ts",
   "repository": {
@@ -10,7 +10,7 @@
   "dependencies": {
     "@discordjs/opus": "^0.9.0",
     "@discordjs/voice": "^0.15.0",
-    "@discordx/importer": "1.1.10",
+    "@discordx/importer": "^1.2.1",
     "@types/moment-duration-format": "^2.2.3",
     "@types/mysql": "^2.15.21",
     "@types/node": "^18.15.1",
