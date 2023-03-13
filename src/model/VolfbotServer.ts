@@ -215,15 +215,16 @@ export class VolfbotServer {
           channelId: vc.id,
           guildId: vc.guildId,
           adapterCreator: vc.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
-        }).subscribe(audioPlayer);
+        }).subscribe(audioPlayer).connection;
 
-        let connection = voiceConnection.connection;
-
-        connection.on("stateChange", (oldState, newState) => {
-          if (oldState.status === VoiceConnectionStatus.Ready && newState.status === VoiceConnectionStatus.Connecting) {
-            connection.configureNetworking();
-          }
-        });
+        // const networkStateChangeHandler = (oldNetworkState: any, newNetworkState: any) => {
+        //   const newUdp = Reflect.get(newNetworkState, 'udp');
+        //   clearInterval(newUdp?.keepAliveInterval);
+        // }
+        // voiceConnection.on('stateChange', (oldState, newState) => {
+        //   Reflect.get(oldState, 'networking')?.off('stateChange', networkStateChangeHandler);
+        //   Reflect.get(newState, 'networking')?.on('stateChange', networkStateChangeHandler);
+        // });
         embed.setDescription(`Joined ${channelMention(vc.id)}`);
 
         this.SetLastVC(vc);
@@ -323,15 +324,16 @@ export class VolfbotServer {
             channelId: this.lastVC.id,
             guildId: this.lastVC.guildId,
             adapterCreator: this.lastVC.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
-          }).subscribe(this.audioPlayer);
+          }).subscribe(this.audioPlayer).connection;
 
-          let connection = voiceConnection.connection;
-
-          connection.on("stateChange", (oldState, newState) => {
-            if (oldState.status === VoiceConnectionStatus.Ready && newState.status === VoiceConnectionStatus.Connecting) {
-              connection.configureNetworking();
-            }
-          })
+          // const networkStateChangeHandler = (oldNetworkState: any, newNetworkState: any) => {
+          //   const newUdp = Reflect.get(newNetworkState, 'udp');
+          //   clearInterval(newUdp?.keepAliveInterval);
+          // }
+          // voiceConnection.on('stateChange', (oldState, newState) => {
+          //   Reflect.get(oldState, 'networking')?.off('stateChange', networkStateChangeHandler);
+          //   Reflect.get(newState, 'networking')?.on('stateChange', networkStateChangeHandler);
+          // });
 
           this.queue.ResumePlayback();
         } else {
