@@ -1,6 +1,6 @@
 import * as mysql from "mysql";
 import { config as configDotenv } from "dotenv";
-import { resolve } from "path/posix";
+import path, { resolve } from "path/posix";
 
 export class DataBase {
   public readonly connection = mysql.createConnection({
@@ -12,8 +12,8 @@ export class DataBase {
   });
 
   constructor() {
-    configDotenv({
-      path: resolve(__dirname, "../../env/env.variables"),
-    });
+    const __dirname = path.resolve(path.dirname(''));
+
+    configDotenv();
   }
 }

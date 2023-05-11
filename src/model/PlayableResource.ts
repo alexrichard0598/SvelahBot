@@ -1,10 +1,10 @@
 import { AudioResource } from "@discordjs/voice";
-import { Metadata } from "./Metadata";
-import { MediaType } from "./MediaType";
-import { VolfbotServer } from "./VolfbotServer";
-import { ISong, Song } from "../database/Queue";
-import { MediaQueue } from "./MediaQueue";
-import { MessageHandling } from "../functions/MessageHandling";
+import { Metadata } from "./Metadata.ts";
+import { MediaType } from "./MediaType.ts";
+import { VolfbotServer } from "./VolfbotServer.ts";
+import { ISong, Song } from "../database/Queue.ts";
+import { MediaQueue } from "./MediaQueue.ts";
+import { MessageHandling } from "../functions/MessageHandling.ts";
 import { Snowflake } from "discord.js";
 
 export class PlayableResource {

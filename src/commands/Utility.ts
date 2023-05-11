@@ -1,10 +1,11 @@
 import { getVoiceConnection } from "@discordjs/voice";
 import { CommandInteraction, VoiceBasedChannel, EmbedBuilder, channelMention } from "discord.js";
 import { Discord, Slash } from "discordx";
-import { MessageHandling, TimeUnit } from "../functions/MessageHandling";
-import { BotStatus } from "../model/BotStatus";
-import { VolfbotServer } from "../model/VolfbotServer";
-import { getClient } from "../app";
+import { MessageHandling, TimeUnit } from "../functions/MessageHandling.ts";
+import { BotStatus } from "../model/BotStatus.ts";
+import { VolfbotServer } from "../model/VolfbotServer.ts";
+import { getClient } from "../app.ts";
+import { error } from "console";
 
 @Discord()
 export abstract class Utility {
@@ -14,7 +15,8 @@ export abstract class Utility {
   })
   public async Ping(interaction: CommandInteraction): Promise<void> {
     try {
-      await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true });
+      const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true });
+      server.StartCommandTimer(interaction);
 
       if (getVoiceConnection(interaction.guildId) === undefined) {
         interaction.editReply("I'm not currently in an voice channels");
@@ -25,6 +27,8 @@ export abstract class Utility {
           "ms"
         );
       }
+
+      server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("Ping", error, interaction.guild);
     }
@@ -34,6 +38,7 @@ export abstract class Utility {
   public async Status(interaction: CommandInteraction) {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true });
+      server.StartCommandTimer(interaction);
       let status: BotStatus;
       let vc: VoiceBasedChannel;
 
@@ -60,6 +65,8 @@ export abstract class Utility {
       }
 
       interaction.editReply({ embeds: [new EmbedBuilder().setDescription(msg).setTitle("Current Status")] });
+
+      server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("Status", error, interaction.guild);
     }
@@ -68,11 +75,14 @@ export abstract class Utility {
   @Slash({ name: "clear-messages", description: "Clears all messages from a bot in the text channel" })
   public async ClearMessages(interaction: CommandInteraction): Promise<void> {
     try {
-      await MessageHandling.InitCommand({ interaction: interaction});
+      const server = await MessageHandling.InitCommand({ interaction: interaction});
+      server.StartCommandTimer(interaction);
       const deleting = await interaction.fetchReply();
       const messages = await MessageHandling.RetrieveBotMessages(interaction.channel, [deleting.id]);
 
       MessageHandling.ClearMessages(messages, interaction);
+
+      server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("Clear", error, interaction.guild);
     }
@@ -81,7 +91,8 @@ export abstract class Utility {
   @Slash({ name: "uptime", description: "Gives the current uptime of the bot" })
   public async Uptime(interaction: CommandInteraction) {
     try {
-      await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true });
+      const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true });
+      server.StartCommandTimer(interaction);
       const client = getClient();
       const uptime = client.uptime;
       const readyAt = client.readyAt;
@@ -92,6 +103,8 @@ export abstract class Utility {
       embed.setDescription(embed.data.description + "\r\n" + 'I went online on ' + `${readyAt.getUTCFullYear()}-${('0' + (readyAt.getUTCMonth() + 1)).slice(-2)}-${('0' + readyAt.getUTCDay()).slice(-2)}`
         + ` at ${('0' + readyAt.getUTCHours()).slice(-2)}:${('0' + readyAt.getUTCMinutes()).slice(-2)}:${('0' + readyAt.getUTCSeconds()).slice(-2)} UTC`);
       interaction.editReply({ embeds: [embed] });
+
+      server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("Clear", error, interaction.guild);
     }

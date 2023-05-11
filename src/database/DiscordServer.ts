@@ -1,4 +1,4 @@
-import { DataBase } from "./DataBase";
+import { DataBase } from "./DataBase.ts";
 
 export interface IDiscordServer {
   id: string;

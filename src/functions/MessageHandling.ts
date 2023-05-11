@@ -1,11 +1,11 @@
 import { AudioPlayerStatus } from "@discordjs/voice";
 import { CommandInteraction, EmbedBuilder, Guild, Message, Snowflake, GuildTextBasedChannel, TextChannel, channelMention, userMention } from "discord.js";
-import { Metadata } from "../model/Metadata";
-import { PlayableResource } from "../model/PlayableResource";
-import { VolfbotServer } from "../model/VolfbotServer";
-import { getClient } from "../app";
-import { logger } from "../logging";
-import { DiscordError, ErrorManager } from "../database/Errors";
+import { Metadata } from "../model/Metadata.ts";
+import { PlayableResource } from "../model/PlayableResource.ts";
+import { VolfbotServer } from "../model/VolfbotServer.ts";
+import { getClient } from "../app.ts";
+import { logger } from "../logging.ts";
+import { DiscordError, ErrorManager } from "../database/Errors.ts";
 
 export abstract class MessageHandling {
   public static errorTracker: number = 0;
@@ -116,7 +116,7 @@ export abstract class MessageHandling {
 
       const botDevChannel = (await (await getClient().guilds.fetch('664999986974687242')).channels.fetch('888174462011342848')) as GuildTextBasedChannel;
       let errorMsg = userMention('134131441175887872') + " An error has occurred in " + caller;
-      if(server instanceof VolfbotServer) errorMsg += "\nOn the discord server: " + server.guild.name;
+      if (server instanceof VolfbotServer) errorMsg += "\nOn the discord server: " + server.guild.name;
       botDevChannel.send({ embeds: [embed], content: errorMsg });
 
       let newError = new DiscordError(currentDate, error.message + ' ' + error.stack);
@@ -164,21 +164,26 @@ export abstract class MessageHandling {
   }
 
   public static async InitCommand({ interaction, isStatusMessage: isStatusMessage, isQueueMessage: isQueueMessage, isNowPlayingMessage: isNowPlayingMessage }: InitCommandParams): Promise<VolfbotServer> {
-    try {
-      if (!interaction.deferred) {
-        const reply = await interaction.deferReply({ fetchReply: true });
+    return new Promise(async (resolve, reject) => {
+      try {
+        let reply: Message = null;
+        if (!interaction.deferred) reply = await interaction.deferReply({ fetchReply: true });
+
         const server = await VolfbotServer.GetServerFromGuild(interaction.guild);
-        if (isStatusMessage) await server.UpdateStatusMessage(reply);
-        if (isQueueMessage) await server.UpdateQueueMessage(reply);
-        if (isNowPlayingMessage) await server.UpdateNowPlayingMessage(reply);
-        server.SetLastChannel(interaction.channel);
-        return server;
-      } else {
-        return VolfbotServer.GetServerFromGuild(interaction.guild);
+        logger.debug(`Running ${interaction.commandName} command in ${interaction.guild.name}`);
+
+        if (reply !== null) {
+          if (isStatusMessage) await server.UpdateStatusMessage(reply);
+          if (isQueueMessage) await server.UpdateQueueMessage(reply);
+          if (isNowPlayingMessage) await server.UpdateNowPlayingMessage(reply);
+          server.SetLastChannel(interaction.channel);
+        }
+
+        resolve(server);
+      } catch (error) {
+        reject(error);
       }
-    } catch (error) {
-      MessageHandling.LogError("InitCommand", error, interaction.guild);
-    }
+    });
   }
 
   public static GetTimestamp(durationMs: number, largestUnit?: TimeUnit): string {

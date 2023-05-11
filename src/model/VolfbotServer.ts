@@ -1,15 +1,17 @@
 import { AudioPlayer, AudioPlayerState, AudioPlayerStatus, createAudioResource, DiscordGatewayAdapterCreator, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice";
-import { CommandInteraction, Guild, Message, EmbedBuilder, VoiceBasedChannel, channelMention, Snowflake, GuildTextBasedChannel } from "discord.js";
-import { MediaQueue } from "./MediaQueue";
-import { ServerMessages } from "./Messages";
+import { CommandInteraction, Guild, Message, EmbedBuilder, VoiceBasedChannel, channelMention, Snowflake, GuildTextBasedChannel, Interaction } from "discord.js";
+import { MediaQueue } from "./MediaQueue.ts";
+import { ServerMessages } from "./Messages.ts";
 import * as fs from 'fs';
-import { PlayableResource } from "./PlayableResource";
-import { logger } from "../logging";
-import { DiscordServer, DiscordServerManager, IDiscordServer } from "../database/DiscordServer";
-import { MessageHandling } from "../functions/MessageHandling";
-import { BotStatus } from "./BotStatus";
-import { getClient } from "../app";
-import { NowPlayingDisplay } from "./NowPlayingDisplay";
+import { PlayableResource } from "./PlayableResource.ts";
+import { logger } from "../logging.ts";
+import { DiscordServer, DiscordServerManager, IDiscordServer } from "../database/DiscordServer.ts";
+import { MessageHandling } from "../functions/MessageHandling.ts";
+import { BotStatus } from "./BotStatus.ts";
+import { getClient } from "../app.ts";
+import { NowPlayingDisplay } from "./NowPlayingDisplay.ts";
+import { resolve } from "path";
+import { rejects } from "assert";
 
 export class VolfbotServer {
   guild: Guild;
@@ -23,6 +25,7 @@ export class VolfbotServer {
   private playingSystemSound = false;
   private disconnectTimer: NodeJS.Timeout;
   public nowPlayingDisplay: NowPlayingDisplay;
+  public commandTimers: Array<boolean>;
 
   constructor(guild: Guild) {
     this.guild = guild;
@@ -41,6 +44,30 @@ export class VolfbotServer {
     });
 
     this.ServerInit();
+
+    this.commandTimers = new Array<boolean>();
+  }
+
+  public async StartCommandTimer(interaction: CommandInteraction) {
+    const delay = ms => new Promise(res => setTimeout(res, ms));
+    const id = parseInt(interaction.id);
+    this.commandTimers[id] = true;
+
+    await delay(30 * 1000);
+
+    return new Promise((resolve, reject) => {
+      if (this.commandTimers[id]) {
+        interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Failed to run command after 30 seconds")] });
+        let error = new Error(`Failed to run ${interaction.commandName} after 30 seconds`);
+        MessageHandling.LogError("CommandTimeout", error, interaction.guild);
+        reject(error);
+      }
+    });
+  }
+
+  public async StopCommandTimer(interaction: CommandInteraction) {
+    const id = parseInt(interaction.id);
+    this.commandTimers[id] = false;
   }
 
   public static async GetServerFromGuild(guild: Guild) {
@@ -92,6 +119,7 @@ export class VolfbotServer {
 
   public async PlaySong(media: PlayableResource) {
     try {
+      logger.debug(`Playing song ${media.meta.title} in ${this.guild.name}`);
       let resource = await media.GetResource();
       this.audioPlayer.play(resource);
     } catch (error) {
@@ -163,6 +191,7 @@ export class VolfbotServer {
 
   public async DisconnectBot(excludedMessages: string[] = []) {
     try {
+      logger.debug("Disconnecting bot");
       await this.queue.Clear();
       this.nowPlayingDisplay.Stop();
       clearTimeout(this.disconnectTimer);
@@ -194,6 +223,8 @@ export class VolfbotServer {
           MessageHandling.ClearMessages(await MessageHandling.RetrieveBotMessages(this.lastChannel, excludedMessages.concat(deleting.id)));
         }
       }
+
+      logger.debug("Bot sucessfully disconnected");
     } catch (error) {
       MessageHandling.LogError("DisconnectBot", error, this);
     }
@@ -210,6 +241,8 @@ export class VolfbotServer {
       const audioPlayer = this.audioPlayer;
       const currentBotVC = await this.GetCurrentVC();
 
+      logger.debug(`Attempting to join VC:${vc ? vc.name : "null"} in server:${interaction.guild.name}`)
+
       if (currentBotVC === null && vc !== null) {
         let voiceConnection = joinVoiceChannel({
           channelId: vc.id,
@@ -217,14 +250,10 @@ export class VolfbotServer {
           adapterCreator: vc.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
         }).subscribe(audioPlayer).connection;
 
-        // const networkStateChangeHandler = (oldNetworkState: any, newNetworkState: any) => {
-        //   const newUdp = Reflect.get(newNetworkState, 'udp');
-        //   clearInterval(newUdp?.keepAliveInterval);
-        // }
-        // voiceConnection.on('stateChange', (oldState, newState) => {
-        //   Reflect.get(oldState, 'networking')?.off('stateChange', networkStateChangeHandler);
-        //   Reflect.get(newState, 'networking')?.on('stateChange', networkStateChangeHandler);
-        // });
+        voiceConnection.once(VoiceConnectionStatus.Ready, () => {
+          logger.debug("Successfully joined VC");
+        });
+
         embed.setDescription(`Joined ${channelMention(vc.id)}`);
 
         this.SetLastVC(vc);
@@ -237,8 +266,10 @@ export class VolfbotServer {
       }
       else if (vc === null) {
         embed.setDescription("You are not part of a voice chat, please join a voice chat first.");
+        logger.debug("No VC to join");
       } else if (currentBotVC === vc) {
         embed.setDescription("I'm already in the VC");
+        logger.debug("Already joined");
       }
 
       return embed;
@@ -325,15 +356,6 @@ export class VolfbotServer {
             guildId: this.lastVC.guildId,
             adapterCreator: this.lastVC.guild.voiceAdapterCreator as DiscordGatewayAdapterCreator,
           }).subscribe(this.audioPlayer).connection;
-
-          // const networkStateChangeHandler = (oldNetworkState: any, newNetworkState: any) => {
-          //   const newUdp = Reflect.get(newNetworkState, 'udp');
-          //   clearInterval(newUdp?.keepAliveInterval);
-          // }
-          // voiceConnection.on('stateChange', (oldState, newState) => {
-          //   Reflect.get(oldState, 'networking')?.off('stateChange', networkStateChangeHandler);
-          //   Reflect.get(newState, 'networking')?.on('stateChange', networkStateChangeHandler);
-          // });
 
           this.queue.ResumePlayback();
         } else {

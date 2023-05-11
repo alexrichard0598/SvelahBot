@@ -13,15 +13,15 @@ import {
   VoiceConnection,
   getVoiceConnection,
 } from "@discordjs/voice";
-import { IMetadata, Metadata } from "../model/Metadata";
-import { MediaType } from "../model/MediaType";
-import { PlayableResource } from "../model/PlayableResource";
-import moment = require("moment");
-import momentDurationFormatSetup = require("moment-duration-format");
-momentDurationFormatSetup(moment);
-import { VolfbotServer } from "../model/VolfbotServer";
-import { MessageHandling } from "../functions/MessageHandling";
-import { MediaQueue } from "../model/MediaQueue";
+import { IMetadata, Metadata } from "../model/Metadata.ts";
+import { MediaType } from "../model/MediaType.ts";
+import { PlayableResource } from "../model/PlayableResource.ts";
+import * as moment from "moment";
+import { VolfbotServer } from "../model/VolfbotServer.ts";
+import { MessageHandling } from "../functions/MessageHandling.ts";
+import { MediaQueue } from "../model/MediaQueue.ts";
+import { logger } from "../logging.ts";
+import { error } from "console";
 
 @Discord()
 export abstract class Voice {
@@ -32,9 +32,12 @@ export abstract class Voice {
   public async Join(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true });
+      server.StartCommandTimer(interaction);
 
       interaction.editReply({ embeds: [await server.ConnectBot(interaction)] }); // Join the vc
       server.SetLastChannel(interaction.channel); // set the last replied channel
+
+      //server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("Join", error, interaction.guild);
     }
@@ -45,6 +48,7 @@ export abstract class Voice {
   public async Disconnect(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true });
+      server.StartCommandTimer(interaction);
       const connection = getVoiceConnection(interaction.guildId); // get the current voice connection
       server.SetLastChannel(interaction.channel); // set the last replied channel
 
@@ -54,10 +58,13 @@ export abstract class Voice {
        */
       if (connection === null) {
         interaction.editReply("I'm not in any voice chats right now");
+        logger.debug("Not in VC");
       } else {
         server.DisconnectBot([(await interaction.fetchReply()).id]);
         interaction.editReply("Disconnected 👋");
       }
+
+      server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("Disconnect", error, interaction.guild);
     }
@@ -71,16 +78,17 @@ export abstract class Voice {
   ): Promise<void> {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction });
+      server.StartCommandTimer(interaction);
       const currentVC = await server.GetCurrentVC();
       const guildMember = await interaction.guild.members.fetch(
         interaction.user
       );
       const vc: VoiceBasedChannel = guildMember.voice.channel;
 
-      if(currentVC === null) {
+      if (currentVC === null) {
         await server.ConnectBot(interaction);
       } else if (currentVC !== vc) {
-        interaction.editReply({embeds: [new EmbedBuilder().setDescription("You're not currently connected to the same VC as me. Please move to the same vc or use the /join command")]});
+        interaction.editReply({ embeds: [new EmbedBuilder().setDescription("You're not currently connected to the same VC as me. Please move to the same vc or use the /join command")] });
         return;
       }
 
@@ -90,6 +98,7 @@ export abstract class Voice {
       const connection = await this.CheckForVoiceConnection(server, interaction);
 
       if (await this.DealWithMedia(interaction, url, server) === null) {
+        logger.debug("Failed to deal with media");
         return;
       }
 
@@ -108,6 +117,8 @@ export abstract class Voice {
           server.PlaySong(media);
         }
       }
+
+      server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("Play", error, interaction.guild);
     }
@@ -121,6 +132,7 @@ export abstract class Voice {
   ) {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction });
+      server.StartCommandTimer(interaction);
       const queue = server.queue; // get the server's queue
 
       if (!queue.HasMedia()) {
@@ -147,7 +159,7 @@ export abstract class Voice {
         let tempQueue = new Array<PlayableResource>();
         tempQueue.push(media);
         newQueue = tempQueue.concat(currentQueue);
-      } else if (media instanceof Array<PlayableResource>) {
+      } else if (media instanceof Array) {
         newQueue = media.concat(currentQueue);
       } else {
         return;
@@ -160,6 +172,8 @@ export abstract class Voice {
       } else {
         server.lastChannel.send("Failed to play media");
       }
+
+      server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("PlayNow", error, interaction.guild);
     }
@@ -169,21 +183,27 @@ export abstract class Voice {
   public async Stop(interaction: CommandInteraction) {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true });
+      server.StartCommandTimer(interaction);
 
       let connection = getVoiceConnection(interaction.guildId);
       const queue = server.queue;
       const audioPlayer = server.audioPlayer;
+
+      logger.debug("Connection: " + connection);
 
       if (connection === undefined) {
         interaction.editReply("Not currently connected to any Voice Channels");
       } else if (audioPlayer.state.status === AudioPlayerStatus.Idle) {
         interaction.editReply("Nothing is currently queued");
       } else {
+        logger.debug("Stopping audio players");
         audioPlayer.stop();
         interaction.editReply("Playback stopped");
+        logger.debug("Clearing queue");
         queue.Clear();
       }
 
+      server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("Stop", error, interaction.guild);
     }
@@ -193,6 +213,7 @@ export abstract class Voice {
   public async Clear(interaction: CommandInteraction) {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true });
+      server.StartCommandTimer(interaction);
 
       if ((await server.queue.GetQueueCount()) == 0) {
         interaction.editReply("Nothing is currently queued");
@@ -200,6 +221,8 @@ export abstract class Voice {
         server.queue.Clear(true);
         interaction.editReply("Queue cleared");
       }
+
+      server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("Clear", error, interaction.guild);
     }
@@ -209,6 +232,7 @@ export abstract class Voice {
   public async Resume(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true });
+      server.StartCommandTimer(interaction);
 
       const embed = new EmbedBuilder().setDescription("Failed to resume playback");
       const audioPlayer = server.audioPlayer;
@@ -235,6 +259,7 @@ export abstract class Voice {
       }
       interaction.editReply({ embeds: [embed] });
 
+      server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("Resume", error, interaction.guild);
     }
@@ -244,6 +269,7 @@ export abstract class Voice {
   public async Pause(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true });
+      server.StartCommandTimer(interaction);
 
       const embed = new EmbedBuilder().setDescription("Failed to pause music");
       const audioPlayer = server.audioPlayer;
@@ -257,6 +283,8 @@ export abstract class Voice {
         embed.setDescription("Cannot pause");
       }
       interaction.editReply({ embeds: [embed] });
+
+      server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("Pause", error, interaction.guild);
     }
@@ -269,6 +297,7 @@ export abstract class Voice {
   ): Promise<void> {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isQueueMessage: true });
+      server.StartCommandTimer(interaction);
 
       const queue = server.queue;
       const audioPlayer = server.audioPlayer;
@@ -314,6 +343,8 @@ export abstract class Voice {
             break;
           }
         }
+
+        server.StopCommandTimer(interaction);
       } else {
         description = "No songs currently in queue";
       }
@@ -336,6 +367,7 @@ export abstract class Voice {
   ): Promise<void> {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true, isQueueMessage: true });
+      server.StartCommandTimer(interaction);
 
       const queue = server.queue;
       let i = parseInt(skip);
@@ -361,6 +393,8 @@ export abstract class Voice {
       }
 
       interaction.editReply({ embeds: [embed] });
+
+      server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("Skip", error, interaction.guild);
     }
@@ -370,9 +404,12 @@ export abstract class Voice {
   public async Loop(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true });
+      server.StartCommandTimer(interaction);
 
       server.queue.loopQueue();
       interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Queue will loop until stopped\n(use /end-loop to stop looping)")] });
+
+      server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("Loop", error, interaction.guild);
     }
@@ -383,9 +420,12 @@ export abstract class Voice {
   public async EndLoop(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true });
+      server.StartCommandTimer(interaction);
 
       server.queue.endLoop();
       interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Queue will no longer loop")] });
+
+      server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("EndLoop", error, interaction.guild);
     }
@@ -396,6 +436,7 @@ export abstract class Voice {
   public async NowPlaying(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isNowPlayingMessage: true });
+      server.StartCommandTimer(interaction);
 
       const nowPlaying: PlayableResource = await server.queue.CurrentItem();
       if (!server.queue.HasMedia() || nowPlaying == null) {
@@ -405,6 +446,8 @@ export abstract class Voice {
       } else {
         interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Could not get currently playing song")] });
       }
+
+      server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("NowPlaying", error, interaction.guild);
     }
@@ -414,13 +457,16 @@ export abstract class Voice {
   public async Shuffle(interaction: CommandInteraction): Promise<void> {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true, isQueueMessage: true });
-      
+      server.StartCommandTimer(interaction);
+
       if (await server.queue.GetTotalLength() == 0) {
         interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Queue is empty")] });
       } else {
         server.queue.Shuffle();
         interaction.editReply({ embeds: [new EmbedBuilder().setDescription("Queue shuffled")] });
       }
+
+      server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("Shuffle", error, interaction.guild);
     }
@@ -434,6 +480,7 @@ export abstract class Voice {
   ): Promise<void> {
     try {
       const server = await MessageHandling.InitCommand({ interaction: interaction, isStatusMessage: true, isQueueMessage: true });
+      server.StartCommandTimer(interaction);
 
       const index = parseInt(indexString);
       if (!server.queue.HasMedia()) {
@@ -451,6 +498,8 @@ export abstract class Voice {
         server.queue.RemoveItemAt(index - 1);
         interaction.editReply({ embeds: [new EmbedBuilder().setDescription(`${song.meta.title} at queue position ${index} removed`)] });
       }
+
+      server.StopCommandTimer(interaction);
     } catch (error) {
       MessageHandling.LogError("RemoveItem", error, interaction.guild);
     }
@@ -492,6 +541,7 @@ export abstract class Voice {
   private CheckMediaStatus(media: PlayableResource, isPlaylist: boolean): [boolean, EmbedBuilder] {
     let embed = new EmbedBuilder().setDescription("Failed to check media status");
     let mediaError = false;
+    logger.debug("Checking media status");
 
     if (media == undefined) {
       embed.setTitle("Unknown Error");
@@ -510,6 +560,8 @@ export abstract class Voice {
       embed.setTitle('Song Queued');
       embed.setDescription(`[${meta.title}](${media.url}) [${userMention(meta.queuedBy)}]`);
     }
+
+    logger.debug("Media status is " + embed.data.title + ": " + embed.data.description);
 
     return [mediaError, embed];
   }
@@ -552,12 +604,14 @@ export abstract class Voice {
 
       let extraLength: number = 1;
 
-      if (media instanceof Array<PlayableResource>) {
+      if (media instanceof Array) {
         extraLength = media.length;
       }
 
       await server.UpdateQueueMessage(await interaction.editReply({ embeds: [mediaStatus[1].setTitle(mediaStatus[1].data.title + ` — ${(await server.queue.GetQueueCount()) + extraLength} Songs in Queue`)] }));
     }
+
+    logger.debug("Dealt with media");
 
     return media;
   }

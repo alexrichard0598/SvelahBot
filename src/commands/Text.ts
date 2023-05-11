@@ -1,9 +1,9 @@
 import { Discord, Slash } from "discordx";
 import { CommandInteraction, EmbedBuilder } from "discord.js";
 import * as fs from 'fs';
-import { KnownUser } from "../model/KnownUsers";
-import { MessageHandling } from "../functions/MessageHandling";
-import { VolfbotServer } from "../model/VolfbotServer";
+import { KnownUser } from "../model/KnownUsers.ts";
+import { MessageHandling } from "../functions/MessageHandling.ts";
+import { VolfbotServer } from "../model/VolfbotServer.ts";
 
 @Discord()
 export abstract class Text {

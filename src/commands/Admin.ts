@@ -1,9 +1,9 @@
 import { CommandInteraction } from "discord.js";
 import { Discord, Slash, Guard } from "discordx";
-import { getClient } from "../app";
-import { IsAdmin } from "../guards/isAdmin";
-import { logger } from "../logging";
-import { MessageHandling } from "../functions/MessageHandling";
+import { getClient } from "../app.ts";
+import { IsAdmin } from "../guards/isAdmin.ts";
+import { logger } from "../logging.ts";
+import { MessageHandling } from "../functions/MessageHandling.ts";
 
 @Discord()
 export abstract class Voice {

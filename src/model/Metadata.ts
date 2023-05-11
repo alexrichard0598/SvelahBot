@@ -1,5 +1,5 @@
 import { Snowflake } from "discord.js";
-import { YouTubePlaylist } from "./PlayableResource";
+import { YouTubePlaylist } from "./PlayableResource.ts";
 
 export interface IMetadata {
   title: string;

@@ -1,9 +1,9 @@
-import { VolfbotServer } from "./VolfbotServer";
-import { MessageHandling, TimeUnit } from "../functions/MessageHandling";
+import { VolfbotServer } from "./VolfbotServer.ts";
+import { MessageHandling, TimeUnit } from "../functions/MessageHandling.ts";
 import { AudioPlayerStatus } from "@discordjs/voice";
 import { EmbedBuilder, Message, channelMention, userMention } from "discord.js";
-import { Metadata } from "./Metadata";
-import { PlayableResource } from "./PlayableResource";
+import { Metadata } from "./Metadata.ts";
+import { PlayableResource } from "./PlayableResource.ts";
 
 export class NowPlayingDisplay {
   private nowPlayingClock: NodeJS.Timer;

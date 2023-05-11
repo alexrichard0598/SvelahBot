@@ -2,6 +2,6 @@ node_modules
 config.json
 build
 .vscode
-env/env.variables
+*.env
 log.txt
 todo.txt

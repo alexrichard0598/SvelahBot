@@ -1,20 +1,20 @@
-import { importx } from "@discordx/importer";
+import { importx, resolve } from "@discordx/importer";
 import { Client } from "discordx";
-import { config as configDotenv } from "dotenv";
-import { resolve } from "path/posix";
-import { logger } from "./logging";
+import * as dotenv from "dotenv";
+import path from "path/posix";
+import { logger } from "./logging.ts";
 import { ActivityType, Events, GatewayIntentBits, Guild, Interaction, Partials } from "discord.js";
-import { VolfbotServer } from "./model/VolfbotServer";
+import { VolfbotServer } from "./model/VolfbotServer.ts";
 
 let client: Client;
 
 async function Start() {
   try {
-    await importx(`${__dirname}/{commands,model,guards}/*.{ts,js}`);
+    const __dirname = path.resolve(path.dirname(''));
 
-    configDotenv({
-      path: resolve(__dirname, "../env/env.variables"),
-    });
+    await importx(`${__dirname}/src/{commands,model,guards}/*.{ts,js}`);
+
+    dotenv.config();
 
     client = new Client({
       silent: false,
