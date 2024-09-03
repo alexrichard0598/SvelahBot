@@ -1,0 +1,28 @@
+[2024-09-03 20:10:39] [INFO    ] discord.client: logging in using static token
+[2024-09-03 20:10:40] [INFO    ] discord.gateway: Shard ID None has connected to Gateway (Session ID: 24940dc708adeb0a0951a62b888f6eb6).
+[2024-09-03 20:19:43] [INFO    ] discord.client: logging in using static token
+[2024-09-03 20:21:02] [INFO    ] discord.client: logging in using static token
+[2024-09-03 20:21:03] [INFO    ] discord.gateway: Shard ID None has connected to Gateway (Session ID: d05a5da0c280deed4f03c590d49e66f5).
+[2024-09-03 20:21:14] [ERROR   ] discord.app_commands.tree: Ignoring exception in command 'foo'
+Traceback (most recent call last):
+  File "c:\Users\svela\AppData\Local\Programs\Python\Python312\Lib\site-packages\discord\app_commands\commands.py", line 858, in _do_call
+    return await self._callback(interaction, **params)  # type: ignore
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Files\Github\Volfbot\volfbot.py", line 28, in foo
+    await context.send(arg)
+          ^^^^^^^^^^^^
+AttributeError: 'Interaction' object has no attribute 'send'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "c:\Users\svela\AppData\Local\Programs\Python\Python312\Lib\site-packages\discord\app_commands\tree.py", line 1310, in _call
+    await command._invoke_with_namespace(interaction, namespace)
+  File "c:\Users\svela\AppData\Local\Programs\Python\Python312\Lib\site-packages\discord\app_commands\commands.py", line 883, in _invoke_with_namespace
+    return await self._do_call(interaction, transformed_values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\svela\AppData\Local\Programs\Python\Python312\Lib\site-packages\discord\app_commands\commands.py", line 876, in _do_call
+    raise CommandInvokeError(self, e) from e
+discord.app_commands.errors.CommandInvokeError: Command 'foo' raised an exception: AttributeError: 'Interaction' object has no attribute 'send'
+[2024-09-03 20:22:22] [INFO    ] discord.client: logging in using static token
+[2024-09-03 20:22:22] [INFO    ] discord.gateway: Shard ID None has connected to Gateway (Session ID: 7f6f01ced594853ee2ca6d284f916cfa).
