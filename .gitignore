@@ -1,1 +1,7 @@
-appsettings.json
+node_modules
+config.json
+build
+.vscode
+*.env
+log.txt
+todo.txt
