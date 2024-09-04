@@ -4,6 +4,7 @@ import logging.handlers
 import discord
 from discord.ext import commands
 from discord import app_commands
+from service import discord_server, player_status, servers
 
 class VolfbotClient(discord.Client):
   def __init__(self, *, intents: discord.Intents):
