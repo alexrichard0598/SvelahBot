@@ -22,14 +22,15 @@ intents = discord.Intents.default()
 intents.message_content = True
 client = VolfbotClient(intents=intents)
 
-@client.tree.command()
-@app_commands.describe(arg="the message to echo")
-async def foo(interaction: discord.Interaction, arg:str):
-  await interaction.response.send_message(f"foobar: {arg}")
-
-
 settingsFile = open("appSettings.json")
 settingsText = settingsFile.read()
 settings = json.loads(settingsText)
 DEV_GUILD = discord.Object(id=settings["DevServerId"])
 client.run(settings['DiscordToken'], log_handler=handler)
+
+# Commands beyond here
+
+@client.tree.command()
+@app_commands.describe(arg="the message to echo")
+async def foo(interaction: discord.Interaction, arg:str):
+  await interaction.response.send_message(f"foobar: {arg}")
