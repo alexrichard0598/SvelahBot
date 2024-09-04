@@ -1,5 +1,6 @@
 from typing import Optional
 from discord import Guild, TextChannel, VoiceChannel
+from model.media import Media
 from model.media_queue import MediaQueue;
 
 class DiscordServer:
@@ -8,7 +9,7 @@ class DiscordServer:
     self.guild: Guild = guild
     self.lastTextChannel: Optional[TextChannel] = None
     self.lastVoiceChannel: Optional[VoiceChannel] = None
-    self.__mediaQueue: MediaQueue = MediaQueue()
+    self.__mediaQueue: MediaQueue = MediaQueue(self)
 
   @property
   def guild(self) -> Guild:
@@ -29,3 +30,6 @@ class DiscordServer:
   @lastVoiceChannel.setter
   def lastVoiceChannel(self, value: VoiceChannel):
     self.lastVoiceChannel = value
+
+  def enqueueMedia(self, media: Media):
+    self.__mediaQueue.enqueueMedia(media)
