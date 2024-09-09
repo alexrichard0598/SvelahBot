@@ -2,16 +2,14 @@
 
 from typing import List
 from volfbot_model.media import Media
-from volfbot_service.discord_server import DiscordServer
 
 
 class MediaQueue:
     """The MediaQueue class and related methods"""
 
-    def __init__(self, server: DiscordServer) -> None:
+    def __init__(self) -> None:
         self.__media_list: List[Media] = List[Media]
         self._looping: bool = False
-        self._server: DiscordServer = server
 
     @property
     def looping(self):
@@ -21,15 +19,6 @@ class MediaQueue:
             bool: True if looping
         """
         return self._looping
-
-    @property
-    def server(self):
-        """The DiscordServer the MediaQueue belongs to
-
-        Returns:
-            DiscordServer: The DiscordServer the MediaQueue belongs to
-        """
-        return self
 
     def start_looping(self):
         """Starts the media queue looping"""

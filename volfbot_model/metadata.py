@@ -2,19 +2,18 @@
 
 from typing import Optional
 from discord import User
-from model.youtube_playlist import YouTubePlaylist
 
 
 class Metadata:
     """The metadata class for storing and accessing media metadata"""
 
     def __init__(self, title: str, length: int, queued_by: User,
-                 playlist: Optional[YouTubePlaylist] = None):
+                    playlist: Optional[str] = None):
         self._title: str = title
         self._length: int = length
         self._queued_by: User = queued_by
         self._is_playlist: bool = not playlist is None
-        self._playlist: Optional[YouTubePlaylist] = playlist
+        self._playlist: Optional[str] = playlist
 
     @property
     def title(self) -> str:
@@ -53,7 +52,7 @@ class Metadata:
         return self._is_playlist
 
     @property
-    def playlist(self) -> Optional[YouTubePlaylist]:
+    def playlist(self) -> Optional[str]:
         """The YouTube playlist
 
         Returns:

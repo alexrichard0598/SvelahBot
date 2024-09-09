@@ -19,8 +19,8 @@ class Media(ABC):
             bool: returns true when a playlist
         """
 
-    @abstractmethod
     @property
+    @abstractmethod
     def metadata(self) -> Metadata:
         """Gets the metadata about the media
 

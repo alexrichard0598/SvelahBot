@@ -1,5 +1,5 @@
 """A module with the Servers class"""
-from typing import List
+from typing import List, Optional
 from volfbot_service.discord_server import DiscordServer
 
 
@@ -26,7 +26,7 @@ class Servers:
         return fetched_server
 
     @staticmethod
-    def __fetch_server(server_id: int):
+    def __fetch_server(server_id: int) -> Optional[DiscordServer]:
         """Fetch a server from the list of servers using the id
 
         Args:

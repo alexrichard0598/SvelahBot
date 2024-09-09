@@ -3,58 +3,50 @@
 import json
 import logging
 import logging.handlers
+from typing import List
 import discord
-from discord import Intents, Interaction, app_commands, Client
-from volfbot_service.discord_server import DiscordServer
-from volfbot_service.servers import Servers
+from discord import Intents, app_commands
+from discord.ext import commands
+from volfbot_commands import VolfbotCommands
 
+settingsFile = open("appSettings.json", encoding="utf-8")
+settingsText = settingsFile.read()
+settings = json.loads(settingsText)
 
-class VolfbotClient(Client):
+DEV_GUILD = discord.Object(id=settings["DevServerId"])
+
+class VolfbotClient(commands.Bot):
     """The main class for Volfbot"""
 
     def __init__(self, *, bot_intents: Intents):
-        super().__init__(intents=bot_intents)
-        self.tree = app_commands.CommandTree(self)
+        super().__init__(command_prefix="!",intents=bot_intents)
+
+    async def setup_hook(self):
+        volfbot_commands = VolfbotCommands(bot)
+        await bot.add_cog(volfbot_commands)
+        await self.register_commands()
 
     async def on_ready(self):
         """When bot is connected and ready print logged in message"""
         print('Logged in as', self.user)
 
-    async def setup_hook(self):
+    async def register_commands(self):
+        """Register Bot command"""
+        print(f"Registering commands with {DEV_GUILD.id}")
         self.tree.copy_global_to(guild=DEV_GUILD)
-        await self.tree.sync(guild=DEV_GUILD)
+        commands_list: List[app_commands.AppCommand] = await self.tree.sync(guild=DEV_GUILD)
+        print(commands_list)
+        for cmd in commands_list:
+            print('Registered command: ', cmd.name)
 
 
 handler = logging.handlers.RotatingFileHandler(
-    filename="volfbot.log", encoding="utf-8", mode="w", maxBytes=100*1024*1024, backupCount=5)
+    filename="volfbot.log", encoding="utf-8", mode="w", maxBytes=100*1024*1024, backupCount=5
+)
+
 intents = discord.Intents.default()
 intents.message_content = True
-client = VolfbotClient(bot_intents=intents)
 
-settingsFile = open("appSettings.json", encoding="utf-8")
-settingsText = settingsFile.read()
-settings = json.loads(settingsText)
-DEV_GUILD = discord.Object(id=settings["DevServerId"])
-client.run(settings['DiscordToken'], log_handler=handler)
+bot = VolfbotClient(bot_intents=intents)
 
-# Commands beyond here
-class VolfbotCommands:
-    """A class that contains all of the slash commands for Volfbot"""
-
-    @client.tree.command(name="foo")
-    async def test(self, interaction: Interaction):
-        """A test method"""
-        await interaction.response.send_message("bar")
-
-
-    @client.tree.command()
-    async def join(self, interaction: Interaction):
-        """Join the vc the user is currently connected to, if any"""
-        server = self.__command_ready(interaction)
-        server.Connect(interaction.user.voice.channel)
-
-    async def __command_ready(self, interaction: Interaction) -> DiscordServer:
-        await interaction.response.defer(thinking=True)
-        server: DiscordServer = await Servers.get_server(DiscordServer(interaction.guild))
-        server.last_text_channel = interaction.channel
-        return server
+bot.run(settings['DiscordToken'], log_handler=handler)
