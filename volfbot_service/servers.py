@@ -19,7 +19,7 @@ class Servers:
             DiscordServer: Either a fetched server, or if a new server was passed in, 
             returns the same server
         """
-        fetched_server = Servers.__fetch_server(server.ID)
+        fetched_server = Servers.__fetch_server(server.id)
         if fetched_server is None:
             Servers.serverList.append(server)
             return server
@@ -36,6 +36,6 @@ class Servers:
             _type_: The found DiscordServer or if no server was found returns None
         """
         for server in Servers.serverList:
-            if server.ID == server_id:
+            if server.id == server_id:
                 return server
         return None

@@ -7,11 +7,14 @@ from discord import User
 class Metadata:
     """The metadata class for storing and accessing media metadata"""
 
-    def __init__(self, title: str, length: int, queued_by: User,
-                    playlist: Optional[str] = None):
+    def __init__(
+        self, title: str, duration: int, queued_by: User,
+        stream_url: str, playlist: Optional[str] = None
+    ):
         self._title: str = title
-        self._length: int = length
+        self._duration: int = duration
         self._queued_by: User = queued_by
+        self._stream_url: str = stream_url
         self._is_playlist: bool = not playlist is None
         self._playlist: Optional[str] = playlist
 
@@ -25,13 +28,13 @@ class Metadata:
         return self._title
 
     @property
-    def length(self) -> int:
+    def duration(self) -> int:
         """The media length in seconds
 
         Returns:
             int: The number of seconds of media
         """
-        return self._length
+        return self._duration
 
     @property
     def queued_by(self) -> bool:
@@ -59,3 +62,20 @@ class Metadata:
             Optional[YouTubePlaylist]: returns None if metadata isn't for a YouTubePlaylist
         """
         return self._playlist
+    
+    @property
+    def stream_url(self) -> str:
+        """The stream url
+
+        Returns:
+            str: The stream url
+        """
+        return self._stream_url
+
+    def to_str(self) -> str:
+        """Converts metadata to string
+
+        Returns:
+            str: the metadata string
+        """
+        return f"Title=\"{self.title}\", Duration={self.duration} seconds, Queued By=\"{self.queued_by}\", Is a playlist?={self.is_playlist}, Stream URL={self.stream_url}"
