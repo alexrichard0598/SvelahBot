@@ -66,9 +66,32 @@ class MediaQueue:
         self.__start_playback()
         return True
 
+    def clear_queue(self) -> bool:
+        """Clears the queue
+
+        Returns:
+            bool: if the queue was cleared
+        """
+        if self.is_playing():
+            return False
+        self.__media_list = []
+        return True
+
+    def stop_media(self) -> bool:
+        """Stops the current playing media
+
+        Returns:
+            bool: if the media was successfully stopped
+        """
+        if not self.is_playing():
+            return False
+        self._server.voice_client.stop()
+        self.index = 0
+        return True
+
     def is_playing(self) -> bool:
         """Gets if the MediaQueue is currently playing media"""
-        if self._server is discord_server.DiscordServer:
+        if isinstance(self._server, discord_server.DiscordServer):
             return self._server.voice_client.is_playing()
 
     def has_media(self) -> bool:

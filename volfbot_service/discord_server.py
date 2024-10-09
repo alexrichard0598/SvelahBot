@@ -153,6 +153,30 @@ class DiscordServer:
         else:
             return False
 
+    def is_playing(self) -> bool:
+        """Returns true if the bot is currently playing media
+
+        Returns:
+            bool: if the both is playing
+        """
+        return self.__media_queue.is_playing()
+
+    def stop(self) -> bool:
+        """Stops playback
+
+        Returns:
+            bool: if successful
+        """
+        return self.__media_queue.stop_media()
+
+    def clear(self) -> bool:
+        """Clears queue
+
+        Returns:
+            bool: if successful
+        """
+        return self.__media_queue.clear_queue()
+
     def is_connected(self, vc: VoiceChannel) -> bool:
         """Checks if the bot is connected to the specified vc
 

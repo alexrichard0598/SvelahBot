@@ -77,12 +77,39 @@ class VolfbotCommands(commands.Cog):
         media: Media = server.create_media(link, interaction.user)
         enqueued = server.enqueue_media(media)
         if enqueued:
-            interaction.edit_original_response(
+            await interaction.edit_original_response(
                 content=f"Enqueued {media.metadata.title}"
             )
         else:
-            interaction.edit_original_response(
+            await interaction.edit_original_response(
                 content=f"Failed to enqueue {media.url}"
+            )
+
+    @app_commands.command(name="stop", description="Stops playback and clears the queue")
+    async def stop(self, interaction: Interaction):
+        """Stops the current media and clears the queue"""
+        server = await self.__command_ready(interaction)
+
+        if not server.is_playing():
+            await interaction.edit_original_response(content="Not currently playing")
+            return
+
+        stopped = server.stop()
+        cleared = False
+        if stopped:
+            cleared = server.clear()
+
+        if cleared:
+            await interaction.edit_original_response(
+                content="Media stopped and cleared"
+            )
+        elif stopped:
+            await interaction.edit_original_response(
+                content="Media stopped but queue failed to clear"
+            )
+        else:
+            await interaction.edit_original_response(
+                content="Failed to stop media"
             )
 
     async def __command_ready(self, interaction: Interaction) -> DiscordServer:
